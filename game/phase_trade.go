@@ -245,7 +245,18 @@ func (p *phaseTradeSelectReceive) validateAndExecuteTrade() Phase {
 			fmt.Sprintf("Traded 4 %s for 1 %s!", offeredResource, requestedResource))
 	}
 
-	return PhaseIdleWithNotification(p.game, "Trade type not yet implemented")
+	// Player-to-player trade: create a broadcast offer (TargetID = -1)
+	if p.game.AddTradeOffer(p.game.PlayerTurn, -1, p.offer, p.request) {
+		offer := TradeOffer{
+			Offering:   p.offer,
+			Requesting: p.request,
+		}
+		p.game.LogAction(fmt.Sprintf("%s offered to trade %s",
+			player.RenderName(), offer.String()))
+		return PhaseIdleWithNotification(p.game, "Trade offer created!")
+	}
+
+	return PhaseIdleWithNotification(p.game, "Not enough resources to make this offer!")
 }
 
 func (p *phaseTradeSelectReceive) isBankTrade() (string, board.ResourceType, board.ResourceType) {
@@ -276,4 +287,98 @@ func (p *phaseTradeSelectReceive) isBankTrade() (string, board.ResourceType, boa
 	}
 
 	return "unknown", 0, 0
+}
+
+type phaseTradePool struct {
+	phaseWithOptions
+	offersSnapshot []*TradeOffer
+}
+
+// Phase for accepting offers made by non-turn holders.
+// Remember only the holder has phases.
+func PhaseTradePool(g *Game) Phase {
+	snapshot := make([]*TradeOffer, len(g.TradeOffers))
+	// TODO: add to the options an "update"
+	// and maybe filter by non-retracted ones.
+	options := make([]string, len(g.TradeOffers)+1)
+	for i := range g.TradeOffers {
+		off := &g.TradeOffers[i]
+		snapshot[i] = off
+		options[i] = off.String()
+	}
+	options[len(g.TradeOffers)] = "Cancel"
+	return &phaseTradePool{
+		phaseWithOptions: phaseWithOptions{
+			game:    g,
+			options: options,
+		},
+		offersSnapshot: snapshot,
+	}
+}
+
+func (p *phaseTradePool) Confirm() Phase {
+	selected := p.selectedOffer()
+	if selected == nil {
+		// "Cancel" was selected
+		return PhaseIdle(p.game)
+	}
+	canTake := selected.canTake(p.game.PlayerTurn, p.game)
+
+	switch canTake {
+	case CanTakeExcludedPlayer:
+		// Stay in trade pool - user can try another offer
+		return p
+	case CanTakeIsAmbiguous:
+		// Future: could open a counter-offer phase here
+		// For now, stay in trade pool
+		return p
+	case CanTakeNotEnoughResources:
+		// Stay in trade pool - user can try another offer
+		return p
+	case CanTakeObsolete:
+		// Stay in trade pool - user can try another offer
+		return p
+	case CanTakeTrue:
+		// Execute the trade
+		if selected.executeTrade(p.game.PlayerTurn, p.game) {
+			offerer := &p.game.Players[selected.OffererID]
+			acceptor := &p.game.Players[p.game.PlayerTurn]
+			p.game.LogAction(fmt.Sprintf("%s traded %s with %s",
+				acceptor.RenderName(), selected.String(), offerer.RenderName()))
+			return PhaseIdleWithNotification(p.game, "Trade completed successfully!")
+		}
+		// If trade execution failed, stay in pool
+		return p
+	default:
+		// Stay in trade pool for unknown status
+		return p
+	}
+}
+
+func (p *phaseTradePool) selectedOffer() *TradeOffer {
+	if p.selected == len(p.offersSnapshot) {
+		return nil
+	}
+	return p.offersSnapshot[p.selected]
+}
+
+func (p *phaseTradePool) HelpText() string {
+	selected := p.selectedOffer()
+	if selected == nil {
+		return "No offer selected"
+	}
+	switch selected.canTake(p.game.PlayerTurn, p.game) {
+	case CanTakeExcludedPlayer:
+		return "Offer not for you"
+	case CanTakeIsAmbiguous:
+		return "Make counter offer to this?"
+	case CanTakeNotEnoughResources:
+		return "You don't have the necessary resources"
+	case CanTakeObsolete:
+		return "Offer no longer available"
+	case CanTakeTrue:
+		return "Accept this offer?"
+	default:
+		return "This should be impossible"
+	}
 }

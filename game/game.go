@@ -26,6 +26,16 @@ type PhaseCancelable interface {
 	Cancel() Phase
 }
 
+// SpectatorPhase is the interface for non-turn holder phases
+// All spectator phases should store their playerID internally
+type SpectatorPhase interface {
+	Confirm(game *Game) SpectatorPhase
+	Cancel(game *Game) SpectatorPhase
+	MoveCursor(direction string)
+	HelpText() string
+	Menu() string
+}
+
 func (g *Game) LogAction(action string) {
 	g.ActionLog = append([]string{action}, g.ActionLog...)
 	if len(g.ActionLog) > 15 {
@@ -33,15 +43,32 @@ func (g *Game) LogAction(action string) {
 	}
 }
 
+// Main game state
 type Game struct {
-	Board       *board.Board
-	Players     []Player
-	LastDice    [2]int
-	phase       Phase // not exported - not needed for network serialization
+	Board    *board.Board
+	Players  []Player
+	LastDice [2]int
+	// the turn holder's state
+	phase Phase
+	// the other players' states
+	spectatorPhases map[int]SpectatorPhase
+	// who is the turn holder
 	PlayerTurn  int
 	DevCardDeck []DevCard
 	ActionLog   []string
+	TradeOffers []TradeOffer
 	shouldQuit  bool
+}
+
+// reset states, and return first Phase of next turn
+func (g *Game) NextTurn() Phase {
+	g.spectatorPhases = nil
+	g.TradeOffers = nil
+	g.PlayerTurn++
+	g.PlayerTurn %= len(g.Players)
+	nextPlayer := &g.Players[g.PlayerTurn]
+	g.LogAction(fmt.Sprintf("Turn passed to %s", nextPlayer.RenderName()))
+	return PhaseDiceRoll(g)
 }
 
 // requestPlayer is the player that the user is playing as.
@@ -51,7 +78,7 @@ func (g *Game) Print(width, height int, requestPlayer *int, twoColumnCycle, oneC
 	playerPerspective := g.playerPerspective(requestPlayer)
 	margin := lipgloss.NewStyle().Margin(1)
 
-	help := g.helpText(width)
+	help := g.helpText(width, playerPerspective)
 	sidebar := g.buildSidebar(playerPerspective, margin)
 
 	boardLines := g.Board.Print(g.phase.BoardCursor())
@@ -129,9 +156,15 @@ func (g *Game) buildSidebar(playerPerspective int, margin lipgloss.Style) string
 	myResourcesStr := margin.Render(strings.Join(myResources, "\n"))
 
 	var phaseSidebar string
-	if p, ok := g.phase.(PhaseWithMenu); ok {
-		if playerPerspective == g.PlayerTurn {
+	if playerPerspective == g.PlayerTurn {
+		// Show turn holder's phase menu
+		if p, ok := g.phase.(PhaseWithMenu); ok {
 			phaseSidebar = margin.Render(p.Menu())
+		}
+	} else {
+		// Show spectator's phase menu
+		if spectatorPhase, ok := g.spectatorPhases[playerPerspective]; ok {
+			phaseSidebar = margin.Render(spectatorPhase.Menu())
 		}
 	}
 
@@ -147,10 +180,24 @@ func (g *Game) playerPerspective(requestPlayer *int) int {
 	}
 }
 
-func (g *Game) helpText(width int) string {
-	player := &g.Players[g.PlayerTurn]
-	help := fmt.Sprintf("%s's turn. %s", player.Render(player.Name), g.phase.HelpText())
-	renderedHelp := lipgloss.PlaceHorizontal(width, lipgloss.Center, help)
+func (g *Game) helpText(width int, playerPerspective int) string {
+	turnPlayer := &g.Players[g.PlayerTurn]
+	var helpMsg string
+
+	if playerPerspective == g.PlayerTurn {
+		// Turn holder sees their phase help text
+		helpMsg = fmt.Sprintf("%s's turn. %s", turnPlayer.Render(turnPlayer.Name), g.phase.HelpText())
+	} else {
+		// Spectator sees their spectator phase help text
+		if spectatorPhase, ok := g.spectatorPhases[playerPerspective]; ok {
+			helpMsg = fmt.Sprintf("%s's turn. %s", turnPlayer.Render(turnPlayer.Name), spectatorPhase.HelpText())
+		} else {
+			// No spectator phase yet (before dice roll)
+			helpMsg = fmt.Sprintf("%s's turn.", turnPlayer.Render(turnPlayer.Name))
+		}
+	}
+
+	renderedHelp := lipgloss.PlaceHorizontal(width, lipgloss.Center, helpMsg)
 	return renderedHelp
 }
 
@@ -195,11 +242,16 @@ func (g *Game) Start(playerNames []string) {
 
 func (g *Game) MoveCursor(direction string, requestPlayer *int) {
 	playerPerspective := g.playerPerspective(requestPlayer)
-	// for now simply ignore moves from other players
-	if playerPerspective != g.PlayerTurn {
-		return
+
+	if playerPerspective == g.PlayerTurn {
+		// Turn holder moves cursor in their phase
+		g.phase.MoveCursor(direction)
+	} else {
+		// Spectator moves cursor in their spectator phase
+		if spectatorPhase, ok := g.spectatorPhases[playerPerspective]; ok {
+			spectatorPhase.MoveCursor(direction)
+		}
 	}
-	g.phase.MoveCursor(direction)
 }
 
 // Function for testing purposes: move the cursor to any valid settlement location
@@ -222,21 +274,31 @@ func (g *Game) MoveCursorToPlaceSettlement() {
 
 func (g *Game) ConfirmAction(requestPlayer *int) {
 	playerPerspective := g.playerPerspective(requestPlayer)
-	// for now simply ignore actions from other players
-	if playerPerspective != g.PlayerTurn {
-		return
+
+	if playerPerspective == g.PlayerTurn {
+		// Turn holder confirms their action
+		g.phase = g.phase.Confirm()
+	} else {
+		// Spectator confirms their action
+		if spectatorPhase, ok := g.spectatorPhases[playerPerspective]; ok {
+			g.spectatorPhases[playerPerspective] = spectatorPhase.Confirm(g)
+		}
 	}
-	g.phase = g.phase.Confirm()
 }
 
 func (g *Game) CancelAction(requestPlayer *int) {
 	playerPerspective := g.playerPerspective(requestPlayer)
-	// for now simply ignore actions from other players
-	if playerPerspective != g.PlayerTurn {
-		return
-	}
-	if p, ok := g.phase.(PhaseCancelable); ok {
-		g.phase = p.Cancel()
+
+	if playerPerspective == g.PlayerTurn {
+		// Turn holder cancels their action
+		if p, ok := g.phase.(PhaseCancelable); ok {
+			g.phase = p.Cancel()
+		}
+	} else {
+		// Spectator cancels their action
+		if spectatorPhase, ok := g.spectatorPhases[playerPerspective]; ok {
+			g.spectatorPhases[playerPerspective] = spectatorPhase.Cancel(g)
+		}
 	}
 }
 
@@ -278,4 +340,23 @@ func (g *Game) ShouldQuit() bool {
 
 func (g *Game) SetPhase(phase Phase) {
 	g.phase = phase
+}
+
+// AddTradeOffer creates and adds a new trade offer to the game
+func (g *Game) AddTradeOffer(offererID, targetID int, offering, requesting map[board.ResourceType]int) bool {
+	offer := TradeOffer{
+		OffererID:  offererID,
+		TargetID:   targetID,
+		Offering:   offering,
+		Requesting: requesting,
+		Status:     OfferIsPending,
+	}
+
+	// Verify the offerer has the resources they're offering
+	if !offer.canOffer(g) {
+		return false
+	}
+
+	g.TradeOffers = append(g.TradeOffers, offer)
+	return true
 }

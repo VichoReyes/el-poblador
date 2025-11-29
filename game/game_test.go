@@ -14,7 +14,7 @@ func TestInitialSettlementsRender(t *testing.T) {
 
 	// 2 rounds of placing settlements and roads
 	for i := 0; i < 2*len(game.Players); i++ {
-		help := game.helpText(100)
+		help := game.helpText(100, game.PlayerTurn)
 		expectedTurn := game.Players[expectedTurns[i]].Name
 		if !strings.Contains(help, expectedTurn) {
 			t.Fatalf("Help text '%s' does not contain expected turn '%s'. Iteration %d", help, expectedTurn, i)

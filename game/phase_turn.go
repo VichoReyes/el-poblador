@@ -60,6 +60,15 @@ func (p *phaseDiceRoll) HelpText() string {
 func rollDice(game *Game) Phase {
 	game.LastDice = [2]int{rand.IntN(6) + 1, rand.IntN(6) + 1}
 	sum := game.LastDice[0] + game.LastDice[1]
+
+	// Initialize spectator phases for all non-turn holders
+	game.spectatorPhases = make(map[int]SpectatorPhase)
+	for i := range game.Players {
+		if i != game.PlayerTurn {
+			game.spectatorPhases[i] = PhaseSpectatorIdle(game, i)
+		}
+	}
+
 	if sum == 7 {
 		// TODO: discarding of > 7 cards
 		return PhasePlaceRobber(game, PhaseIdle(game))
@@ -107,8 +116,14 @@ func PhaseIdle(game *Game) Phase {
 func PhaseIdleWithNotification(game *Game, notification string) Phase {
 	return &phaseIdle{
 		phaseWithOptions: phaseWithOptions{
-			game:    game,
-			options: []string{"Build", "Trade", "Play Development Card", "End Turn"},
+			game: game,
+			options: []string{
+				"Build",
+				"Make Trade Offer",
+				"Check Trade Offers",
+				"Play Development Card",
+				"End Turn",
+			},
 		},
 		notification: notification,
 	}
@@ -118,16 +133,14 @@ func (p *phaseIdle) Confirm() Phase {
 	switch p.selected {
 	case 0: // Build
 		return PhaseBuilding(p.game, p)
-	case 1: // Trade
+	case 1: // Make Trade Offer
 		return PhaseTradeOffer(p.game)
-	case 2: // Play Development Card
+	case 2: // Check Trade Offers
+		return PhaseTradePool(p.game)
+	case 3: // Play Development Card
 		return PhasePlayDevelopmentCard(p.game, p)
-	case 3: // End Turn
-		p.game.PlayerTurn++
-		p.game.PlayerTurn %= len(p.game.Players)
-		nextPlayer := &p.game.Players[p.game.PlayerTurn]
-		p.game.LogAction(fmt.Sprintf("Turn passed to %s", nextPlayer.RenderName()))
-		return PhaseDiceRoll(p.game)
+	case 4: // End Turn
+		return p.game.NextTurn()
 	default:
 		panic("Invalid option selected")
 	}

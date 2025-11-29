@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// when implementing, ensure the options aren't empty
 type phaseWithOptions struct {
 	game     *Game
 	options  []string
