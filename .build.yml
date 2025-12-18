@@ -1,9 +1,14 @@
-image: alpine/edge
+image: debian/stable
+artifacts: [el_poblador/dist/el_poblador]
 packages:
-  - go
+  - golang
 tasks:
   - test: |
       cd el_poblador
       go test -v ./...
       go run cmd/testboard/main.go
       go run cmd/fullscreen/main.go
+  - build: |
+      cd el_poblador
+      mkdir dist
+      go build -o dist/el_poblador .
