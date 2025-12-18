@@ -1,5 +1,7 @@
 # El Poblador - Settlers of Catan TUI
 
+[![builds.sr.ht status](https://builds.sr.ht/~vicho/el_poblador/commits/main/.build.yml.svg)](https://builds.sr.ht/~vicho/el_poblador/commits/main/.build.yml?)
+
 A terminal-based implementation of Settlers of Catan in Go.
 
 ![game screenshot](screenshot.png)
