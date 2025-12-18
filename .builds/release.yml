@@ -12,3 +12,6 @@ tasks:
       cd el_poblador
       mkdir dist
       go build -o dist/el_poblador .
+git.sr.ht:
+  allow-refs:
+    - "refs/tags/*"
