@@ -16,11 +16,6 @@ func TestPathCoord(t *testing.T) {
 	if path.From != from || path.To != to {
 		t.Errorf("Expected path from %v to %v, got from %v to %v", from, to, path.From, path.To)
 	}
-
-	expected := "(2,2)-(2,3)"
-	if path.String() != expected {
-		t.Errorf("Expected %s, got %s", expected, path.String())
-	}
 }
 
 func TestPathCoordCanonicalOrdering(t *testing.T) {

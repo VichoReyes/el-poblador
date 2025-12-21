@@ -1,7 +1,6 @@
 package board
 
 import (
-	"fmt"
 	"slices"
 )
 
@@ -101,7 +100,6 @@ func (c TileCoord) Right() (TileCoord, bool) {
 }
 
 func (c CrossCoord) Neighbors() []CrossCoord {
-	// TODO: use Up, Down, Left, Right methods
 	var potential []CrossCoord
 	if (c.X+c.Y)%2 == 0 {
 		potential = []CrossCoord{
@@ -174,19 +172,4 @@ func NewPathCoord(from, to CrossCoord) PathCoord {
 		return PathCoord{From: from, To: to}
 	}
 	return PathCoord{From: to, To: from}
-}
-
-// String returns the string representation of an intersection coordinate
-func (ic CrossCoord) String() string {
-	return fmt.Sprintf("(%d,%d)", ic.X, ic.Y)
-}
-
-// String returns the string representation of a tile coordinate
-func (tc TileCoord) String() string {
-	return fmt.Sprintf("[%d,%d]", tc.X, tc.Y)
-}
-
-// String returns the string representation of a path coordinate
-func (pc PathCoord) String() string {
-	return fmt.Sprintf("%s-%s", pc.From.String(), pc.To.String())
 }
