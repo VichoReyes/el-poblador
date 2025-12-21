@@ -1,6 +1,6 @@
 # El Poblador - Settlers of Catan TUI
 
-[![builds.sr.ht status](https://builds.sr.ht/~vicho/el_poblador/commits/main/.build.yml.svg)](https://builds.sr.ht/~vicho/el_poblador/commits/main/.build.yml?)
+[![builds.sr.ht status](https://builds.sr.ht/~vicho/el_poblador/commits/main/test.yml.svg)](https://builds.sr.ht/~vicho/el_poblador/commits/main/test.yml?)
 
 A terminal-based implementation of Settlers of Catan in Go.
 
@@ -8,33 +8,25 @@ A terminal-based implementation of Settlers of Catan in Go.
 
 ## Installation
 
-Download the latest release for your platform from [GitHub Releases](https://github.com/VichoReyes/el_poblador/releases):
+Download the latest release for your platform from [release builds](https://builds.sr.ht/~vicho/el_poblador/commits/main/release.yml).
 
-```bash
-wget https://github.com/VichoReyes/el_poblador/releases/latest/download/el-poblador-linux-amd64
-chmod +x el-poblador-linux-amd64
-./el-poblador-linux-amd64 player1 player2 player3
-# or you can add it to PATH
-sudo cp el-poblador-linux-amd64 /usr/local/bin/el-poblador
-```
-
-Another option is cloning the repo and building from source. Or using `go install`. Or making an AUR package. Go wild.
+Another option is cloning the repo and building from [source](https://git.sr.ht/~vicho/el_poblador/refs). Or making an AUR package. Go wild.
 
 ## Running the Project
 
-### Main Game
+The examples use `go run main.go`, but if you have a compiled binary use that instead.
+
+Run the main game with 3-4 players:
 
 ```bash
-go run main.go new <player1> <player2> <player3> [player4]
+go run main.go new <player1> <player2> <player3> [player4]  # player names
 ```
 
-Runs the main Catan game with 3-4 players. Provide player names as command-line arguments.
+Load a saved game:
 
 ```bash
 go run main.go load <savefile>
 ```
-
-Loads a saved game.
 
 **Controls:**
 - Arrow keys: Move cursor
@@ -44,51 +36,10 @@ Loads a saved game.
 - 0: Switch back to current turn holder's perspective
 - q/Ctrl+C: Quit game  (to be removed)
 
-### Preview Board
-```bash
-go run cmd/testboard/main.go
-```
-Displays a test board with sample game state.
+## Online Multiplayer
 
-### Full-Screen Terminal
-```bash
-go run cmd/fullscreen/main.go
-```
-Shows the whole game interface. This is how the screenshot above was generated.
-
-### Running Tests
-```bash
-go test -v ./...
-```
-
-Runs all tests across the project.
-
-## Project Structure
-
-- **`board/`** - Board representation, coordinates, rendering, and terrain
-- **`game/`** - Core game logic, phases, players, and turn management
-- **`cmd/`** - Command-line applications for testing
-
-## Game Features
-
-- Full Catan gameplay with dice rolling, building, trading, and development cards
-- Hexagonal board with proper coordinate system
-- Turn-based phase system (dice roll, building, robber placement, etc.)
-- Resource generation and management
-- Victory point tracking
-- Robber mechanics with card stealing
-- Development cards (Knight, Road Building, Monopoly, Year of Plenty, Victory Points)
-
-## Missing
-
-(see Issues for a more up to date list)
-
-- Longest Road and Largest Army
-- Trade
-  - Trading ports
-- Online Multiplayer
-- Better localization (eliminating spanglish)
-- 5 to 6 player mode
+Online multiplayer is one of the [missing features](https://todo.sr.ht/~vicho/el_poblador/).
+It would be cool to have, though.
 
 ## License
 
