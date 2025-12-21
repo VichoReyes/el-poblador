@@ -25,6 +25,7 @@ const (
 	CanTakeNotEnoughResources
 	CanTakeIsAmbiguous
 	CanTakeTrue
+	CanTakeOwnOffer
 )
 
 // TradeOffer represents a player-to-player trade proposal.
@@ -87,9 +88,14 @@ func (t *TradeOffer) String() string {
 	return fmt.Sprintf("%s for %s", offering, requesting)
 }
 
+// Can a player take a given offer?
+// Checks only from the perspective of the taker, not the offerer
 func (t *TradeOffer) canTake(playerId int, g *Game) CanTakeOffer {
 	if t.Status != OfferIsPending {
 		return CanTakeObsolete
+	}
+	if t.OffererID == playerId {
+		return CanTakeOwnOffer
 	}
 	if t.TargetID >= 0 && t.TargetID != playerId {
 		return CanTakeExcludedPlayer
@@ -112,8 +118,9 @@ func (t *TradeOffer) canTake(playerId int, g *Game) CanTakeOffer {
 	return CanTakeTrue
 }
 
-// executeTrade performs the actual resource exchange between two players
-// and marks the offer as completed. Returns true if successful.
+// executeTrade performs the resource exchange between two players
+// and marks the offer as completed. Returns false if any player doesn't
+// have the necessary resources.
 func (t *TradeOffer) executeTrade(acceptorID int, g *Game) bool {
 	// Verify the trade can be executed
 	if t.canTake(acceptorID, g) != CanTakeTrue {
@@ -122,6 +129,12 @@ func (t *TradeOffer) executeTrade(acceptorID int, g *Game) bool {
 
 	offerer := &g.Players[t.OffererID]
 	acceptor := &g.Players[acceptorID]
+
+	for resource, amount := range t.Offering {
+		if offerer.Resources[resource] < amount {
+			return false
+		}
+	}
 
 	// Transfer resources from offerer to acceptor (what offerer is giving)
 	for resource, amount := range t.Offering {

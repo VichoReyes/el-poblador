@@ -180,3 +180,141 @@ func TestTradePoolStaysOpenOnFailedAccept(t *testing.T) {
 		t.Errorf("Offer should still be pending, got status %d", g.TradeOffers[0].Status)
 	}
 }
+
+// TestSpectatorRetractsOwnOffer tests that a spectator can retract their own trade offer
+func TestSpectatorRetractsOwnOffer(t *testing.T) {
+	// Setup game
+	g := &Game{}
+	g.Start([]string{"Alice", "Bob", "Charlie"})
+
+	// Give Bob resources to make an offer
+	g.Players[1].Resources[board.ResourceWood] = 5
+
+	// Set turn to player 0 (Alice)
+	g.PlayerTurn = 0
+	g.phase = PhaseIdle(g)
+
+	// Initialize spectator phases
+	g.spectatorPhases = make(map[int]SpectatorPhase)
+	for i := range g.Players {
+		if i != g.PlayerTurn {
+			g.spectatorPhases[i] = PhaseSpectatorIdle(g, i)
+		}
+	}
+
+	// Bob (spectator, player 1) creates a trade offer: 2 wood for 2 brick
+	success := g.AddTradeOffer(1, -1, map[board.ResourceType]int{
+		board.ResourceWood: 2,
+	}, map[board.ResourceType]int{
+		board.ResourceBrick: 2,
+	})
+
+	if !success {
+		t.Fatal("Failed to create trade offer")
+	}
+
+	// Verify the offer was created and is pending
+	if len(g.TradeOffers) != 1 {
+		t.Fatalf("Expected 1 trade offer, got %d", len(g.TradeOffers))
+	}
+	if g.TradeOffers[0].Status != OfferIsPending {
+		t.Errorf("Offer should be pending, got status %d", g.TradeOffers[0].Status)
+	}
+
+	// Bob navigates to trade pool
+	spectatorPhase := g.spectatorPhases[1]
+	spectatorIdle := spectatorPhase.(*phaseSpectatorIdle)
+	spectatorIdle.MoveCursor("down") // Move to "View Trade Pool"
+
+	// Enter trade pool
+	tradePoolPhase := spectatorIdle.Confirm(g).(*phaseSpectatorTradePool)
+
+	// Verify Bob sees his own offer
+	if len(tradePoolPhase.offersSnapshot) != 2 { // offer + Update button
+		t.Fatalf("Expected 2 entries (1 offer + Update), got %d", len(tradePoolPhase.offersSnapshot))
+	}
+
+	// Verify canTake returns CanTakeOwnOffer
+	offer := tradePoolPhase.offersSnapshot[0]
+	if offer.canTake(1, g) != CanTakeOwnOffer {
+		t.Errorf("Expected CanTakeOwnOffer, got %d", offer.canTake(1, g))
+	}
+
+	// Bob confirms to retract his own offer (it's already selected at index 0)
+	resultPhase := tradePoolPhase.Confirm(g)
+
+	// Verify Bob stays in trade pool after retracting
+	if _, ok := resultPhase.(*phaseSpectatorTradePool); !ok {
+		t.Errorf("Expected to stay in trade pool phase, got %T", resultPhase)
+	}
+
+	// Verify the offer status changed to retracted
+	if g.TradeOffers[0].Status != OfferIsRetracted {
+		t.Errorf("Expected offer to be retracted, got status %d", g.TradeOffers[0].Status)
+	}
+}
+
+// TestTurnHolderRetractsOwnOffer tests that a turn holder can retract their own trade offer
+func TestTurnHolderRetractsOwnOffer(t *testing.T) {
+	// Setup game
+	g := &Game{}
+	g.Start([]string{"Alice", "Bob", "Charlie"})
+
+	// Give Alice resources to make an offer
+	g.Players[0].Resources[board.ResourceWood] = 5
+
+	// Set turn to player 0 (Alice)
+	g.PlayerTurn = 0
+	g.phase = PhaseIdle(g)
+
+	// Alice creates a trade offer: 2 wood for 2 brick
+	success := g.AddTradeOffer(0, -1, map[board.ResourceType]int{
+		board.ResourceWood: 2,
+	}, map[board.ResourceType]int{
+		board.ResourceBrick: 2,
+	})
+
+	if !success {
+		t.Fatal("Failed to create trade offer")
+	}
+
+	// Verify the offer was created and is pending
+	if len(g.TradeOffers) != 1 {
+		t.Fatalf("Expected 1 trade offer, got %d", len(g.TradeOffers))
+	}
+	if g.TradeOffers[0].Status != OfferIsPending {
+		t.Errorf("Offer should be pending, got status %d", g.TradeOffers[0].Status)
+	}
+
+	// Alice navigates to "Check Trade Offers" in idle phase
+	idlePhase := g.phase.(*phaseIdle)
+	idlePhase.MoveCursor("down") // Move from "Build" to "Make Trade Offer"
+	idlePhase.MoveCursor("down") // Move to "Check Trade Offers"
+
+	// Enter trade pool
+	tradePoolPhase := idlePhase.Confirm().(*phaseTradePool)
+
+	// Verify Alice sees her own offer
+	if len(tradePoolPhase.offersSnapshot) != 2 { // offer + Update button
+		t.Fatalf("Expected 2 entries (1 offer + Update), got %d", len(tradePoolPhase.offersSnapshot))
+	}
+
+	// Verify canTake returns CanTakeOwnOffer
+	offer := tradePoolPhase.offersSnapshot[0]
+	if offer.canTake(0, g) != CanTakeOwnOffer {
+		t.Errorf("Expected CanTakeOwnOffer, got %d", offer.canTake(0, g))
+	}
+
+	// Alice confirms to retract her own offer (it's already selected at index 0)
+	resultPhase := tradePoolPhase.Confirm()
+
+	// Verify Alice stays in trade pool after retracting
+	if _, ok := resultPhase.(*phaseTradePool); !ok {
+		t.Errorf("Expected to stay in trade pool phase, got %T", resultPhase)
+	}
+
+	// Verify the offer status changed to retracted
+	if g.TradeOffers[0].Status != OfferIsRetracted {
+		t.Errorf("Expected offer to be retracted, got status %d", g.TradeOffers[0].Status)
+	}
+}

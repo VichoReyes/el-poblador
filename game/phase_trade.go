@@ -325,32 +325,29 @@ func (p *phaseTradePool) Confirm() Phase {
 	canTake := selected.canTake(p.game.PlayerTurn, p.game)
 
 	switch canTake {
-	case CanTakeExcludedPlayer:
-		// Stay in trade pool - user can try another offer
+	case CanTakeOwnOffer:
+		// Confirming an own offer means retracting it
+		selected.Status = OfferIsRetracted
 		return p
 	case CanTakeIsAmbiguous:
 		// Future: could open a counter-offer phase here
 		// For now, stay in trade pool
 		return p
-	case CanTakeNotEnoughResources:
-		// Stay in trade pool - user can try another offer
-		return p
-	case CanTakeObsolete:
-		// Stay in trade pool - user can try another offer
-		return p
 	case CanTakeTrue:
 		// Execute the trade
+		offerer := &p.game.Players[selected.OffererID]
+		acceptor := &p.game.Players[p.game.PlayerTurn]
 		if selected.executeTrade(p.game.PlayerTurn, p.game) {
-			offerer := &p.game.Players[selected.OffererID]
-			acceptor := &p.game.Players[p.game.PlayerTurn]
 			p.game.LogAction(fmt.Sprintf("%s traded %s with %s",
 				acceptor.RenderName(), selected.String(), offerer.RenderName()))
 			return PhaseIdleWithNotification(p.game, "Trade completed successfully!")
 		}
-		// If trade execution failed, stay in pool
-		return p
+		// Only reason the trade can fail at this point
+		p.game.LogAction(fmt.Sprintf("%s's offer was a bluff!", offerer.RenderName()))
+		selected.Status = OfferIsRetracted
+		return PhaseIdleWithNotification(p.game, "Trade didn't work!")
 	default:
-		// Stay in trade pool for unknown status
+		// Stay in trade pool for any other status
 		return p
 	}
 }
@@ -372,6 +369,8 @@ func (p *phaseTradePool) HelpText() string {
 		return "Offer not for you"
 	case CanTakeIsAmbiguous:
 		return "Make counter offer to this?"
+	case CanTakeOwnOffer:
+		return "Your own offer. Retract?"
 	case CanTakeNotEnoughResources:
 		return "You don't have the necessary resources"
 	case CanTakeObsolete:
