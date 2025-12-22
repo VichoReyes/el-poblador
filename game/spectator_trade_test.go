@@ -67,9 +67,13 @@ func TestTurnHolderAndSpectatorTrading(t *testing.T) {
 	// Confirm to enter trade pool
 	tradePoolPhase := spectatorIdle.Confirm(g).(*phaseSpectatorTradePool)
 
-	// Verify we can see the offer
-	if len(tradePoolPhase.offersSnapshot) != 1 {
-		t.Fatalf("Expected to see 1 offer in pool, got %d", len(tradePoolPhase.offersSnapshot))
+	// Verify we can see the offer (snapshot includes offer + Update button nil)
+	if len(tradePoolPhase.offersSnapshot) != 2 {
+		t.Fatalf("Expected to see 2 entries in snapshot (1 offer + Update button), got %d", len(tradePoolPhase.offersSnapshot))
+	}
+	// Verify first entry is the actual offer
+	if tradePoolPhase.offersSnapshot[0] == nil {
+		t.Fatal("Expected first entry to be an offer, got nil")
 	}
 
 	// Check if Bob can take the offer

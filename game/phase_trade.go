@@ -297,16 +297,45 @@ type phaseTradePool struct {
 // Phase for accepting offers made by non-turn holders.
 // Remember only the holder has phases.
 func PhaseTradePool(g *Game) Phase {
-	snapshot := make([]*TradeOffer, len(g.TradeOffers))
-	// TODO: add to the options an "update"
-	// and maybe filter by non-retracted ones.
-	options := make([]string, len(g.TradeOffers)+1)
-	for i := range g.TradeOffers {
-		off := &g.TradeOffers[i]
-		snapshot[i] = off
-		options[i] = off.String()
+	currentPlayer := g.PlayerTurn
+	strikethrough := strikethroughStyle()
+
+	// Categorize offers into actionable and non-actionable
+	var actionable []*TradeOffer
+	var nonActionable []*TradeOffer
+
+	// Iterate in reverse (most recent first)
+	for i := len(g.TradeOffers) - 1; i >= 0; i-- {
+		offer := &g.TradeOffers[i]
+		canTake := offer.canTake(currentPlayer, g)
+
+		if canTake == CanTakeTrue || canTake == CanTakeOwnOffer {
+			actionable = append(actionable, offer)
+		} else {
+			nonActionable = append(nonActionable, offer)
+		}
 	}
-	options[len(g.TradeOffers)] = "Cancel"
+
+	// Build options and snapshot in parallel
+	var options []string
+	var snapshot []*TradeOffer
+
+	// Add actionable offers (normal style)
+	for _, offer := range actionable {
+		options = append(options, offer.RenderForPool(g))
+		snapshot = append(snapshot, offer)
+	}
+
+	// Add non-actionable offers (strikethrough)
+	for _, offer := range nonActionable {
+		options = append(options, strikethrough.Render(offer.RenderForPool(g)))
+		snapshot = append(snapshot, offer)
+	}
+
+	// Always add Update button
+	options = append(options, "Update")
+	snapshot = append(snapshot, nil) // nil for Update button
+
 	return &phaseTradePool{
 		phaseWithOptions: phaseWithOptions{
 			game:    g,
@@ -319,8 +348,8 @@ func PhaseTradePool(g *Game) Phase {
 func (p *phaseTradePool) Confirm() Phase {
 	selected := p.selectedOffer()
 	if selected == nil {
-		// "Cancel" was selected
-		return PhaseIdle(p.game)
+		// "Update" button was selected - refresh the phase
+		return PhaseTradePool(p.game)
 	}
 	canTake := selected.canTake(p.game.PlayerTurn, p.game)
 
@@ -362,7 +391,7 @@ func (p *phaseTradePool) selectedOffer() *TradeOffer {
 func (p *phaseTradePool) HelpText() string {
 	selected := p.selectedOffer()
 	if selected == nil {
-		return "No offer selected"
+		return "Refresh offer list"
 	}
 	switch selected.canTake(p.game.PlayerTurn, p.game) {
 	case CanTakeExcludedPlayer:
@@ -380,4 +409,8 @@ func (p *phaseTradePool) HelpText() string {
 	default:
 		return "This should be impossible"
 	}
+}
+
+func (p *phaseTradePool) Cancel() Phase {
+	return PhaseIdle(p.game)
 }

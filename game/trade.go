@@ -88,6 +88,23 @@ func (t *TradeOffer) String() string {
 	return fmt.Sprintf("%s for %s", offering, requesting)
 }
 
+// RenderForPool creates a rich string representation for the trade pool UI
+// including offerer name (colored), target information, and offer details.
+func (t *TradeOffer) RenderForPool(g *Game) string {
+	offerer := &g.Players[t.OffererID]
+	offerStr := t.String()
+
+	var targetStr string
+	if t.TargetID == -1 {
+		targetStr = "anyone"
+	} else {
+		targetStr = g.Players[t.TargetID].Name
+	}
+
+	return fmt.Sprintf("%s → %s: %s",
+		offerer.RenderName(), targetStr, offerStr)
+}
+
 // Can a player take a given offer?
 // Checks only from the perspective of the taker, not the offerer
 func (t *TradeOffer) canTake(playerId int, g *Game) CanTakeOffer {

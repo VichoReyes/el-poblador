@@ -116,14 +116,44 @@ type phaseSpectatorTradePool struct {
 }
 
 func PhaseSpectatorTradePool(game *Game, playerID int) SpectatorPhase {
-	snapshot := make([]*TradeOffer, len(game.TradeOffers))
-	options := make([]string, len(game.TradeOffers)+1)
-	for i := range game.TradeOffers {
-		off := &game.TradeOffers[i]
-		snapshot[i] = off
-		options[i] = off.String()
+	strikethrough := strikethroughStyle()
+
+	// Categorize offers into actionable and non-actionable
+	var actionable []*TradeOffer
+	var nonActionable []*TradeOffer
+
+	// Iterate in reverse (most recent first)
+	for i := len(game.TradeOffers) - 1; i >= 0; i-- {
+		offer := &game.TradeOffers[i]
+		canTake := offer.canTake(playerID, game)
+
+		if canTake == CanTakeTrue || canTake == CanTakeOwnOffer {
+			actionable = append(actionable, offer)
+		} else {
+			nonActionable = append(nonActionable, offer)
+		}
 	}
-	options[len(game.TradeOffers)] = "Cancel"
+
+	// Build options and snapshot in parallel
+	var options []string
+	var snapshot []*TradeOffer
+
+	// Add actionable offers (normal style)
+	for _, offer := range actionable {
+		options = append(options, offer.RenderForPool(game))
+		snapshot = append(snapshot, offer)
+	}
+
+	// Add non-actionable offers (strikethrough)
+	for _, offer := range nonActionable {
+		options = append(options, strikethrough.Render(offer.RenderForPool(game)))
+		snapshot = append(snapshot, offer)
+	}
+
+	// Always add Update button
+	options = append(options, "Update")
+	snapshot = append(snapshot, nil) // nil for Update button
+
 	return &phaseSpectatorTradePool{
 		spectatorPhaseWithOptions: spectatorPhaseWithOptions{
 			game:     game,
@@ -137,12 +167,16 @@ func PhaseSpectatorTradePool(game *Game, playerID int) SpectatorPhase {
 func (p *phaseSpectatorTradePool) Confirm(game *Game) SpectatorPhase {
 	selected := p.selectedOffer()
 	if selected == nil {
-		// "Cancel" was selected
-		return PhaseSpectatorIdle(game, p.playerID)
+		// "Update" button was selected - refresh the phase
+		return PhaseSpectatorTradePool(game, p.playerID)
 	}
 	canTake := selected.canTake(p.playerID, game)
 
 	switch canTake {
+	case CanTakeOwnOffer:
+		// Confirming an own offer means retracting it
+		selected.Status = OfferIsRetracted
+		return p
 	case CanTakeExcludedPlayer:
 		// Stay in trade pool - user can try another offer
 		return p
@@ -186,13 +220,15 @@ func (p *phaseSpectatorTradePool) Cancel(game *Game) SpectatorPhase {
 func (p *phaseSpectatorTradePool) HelpText() string {
 	selected := p.selectedOffer()
 	if selected == nil {
-		return "No offer selected"
+		return "Refresh offer list"
 	}
 	switch selected.canTake(p.playerID, p.game) {
 	case CanTakeExcludedPlayer:
 		return "Offer not for you"
 	case CanTakeIsAmbiguous:
 		return "Make counter offer to this?"
+	case CanTakeOwnOffer:
+		return "Your own offer. Retract?"
 	case CanTakeNotEnoughResources:
 		return "You don't have the necessary resources"
 	case CanTakeObsolete:
