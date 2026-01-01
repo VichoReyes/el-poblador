@@ -139,8 +139,6 @@ func (p *phaseSettlementPlacement) Confirm() Phase {
 		return p
 	}
 
-	player.SettlementsAvailable--
-
 	p.game.Board.SetSettlement(p.cursorCross, playerId)
 
 	p.game.LogAction(fmt.Sprintf("%s built a settlement", player.RenderName()))
@@ -210,8 +208,6 @@ func (p *phaseCityPlacement) Confirm() Phase {
 		p.invalid = "Not enough resources"
 		return p
 	}
-
-	player.CitiesAvailable--
 
 	p.game.Board.UpgradeToCity(p.cursorCross, playerId)
 

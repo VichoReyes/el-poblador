@@ -134,18 +134,18 @@ func (p *phaseRoadEnd) Confirm() Phase {
 		return p
 	}
 
-	if !p.isFree {
-		if !player.BuildRoad() {
-			p.invalid = "Not enough resources"
-			return p
-		}
-	}
-
 	if player.RoadsAvailable <= 0 {
 		if p.continuation == nil {
 			return PhaseIdleWithNotification(p.game, "No roads left to build")
 		} else {
 			return p.continuation
+		}
+	}
+
+	if !p.isFree {
+		if !player.BuildRoad() {
+			p.invalid = "Not enough resources"
+			return p
 		}
 	}
 

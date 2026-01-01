@@ -150,6 +150,7 @@ func TestCityUpgradeFreesSettlement(t *testing.T) {
 	settlementCoord, _ := board.NewCrossCoord(2, 3)
 
 	initialSettlements := player.SettlementsAvailable
+	initialCities := player.CitiesAvailable
 
 	// Place settlement using the initial settlement phase (doesn't require roads)
 	initialPhase := &phaseInitialSettlements{
@@ -187,6 +188,10 @@ func TestCityUpgradeFreesSettlement(t *testing.T) {
 	if player.SettlementsAvailable != settlementsAfterBuilding+1 {
 		t.Fatalf("Expected settlement to be freed after city upgrade (should increase from %d to %d), got %d",
 			settlementsAfterBuilding, settlementsAfterBuilding+1, player.SettlementsAvailable)
+	}
+	if player.CitiesAvailable != initialCities-1 {
+		t.Fatalf("Expected city to be used after city upgrade (should decrease from %d to %d), got %d",
+			initialCities, initialCities-1, player.CitiesAvailable)
 	}
 }
 
