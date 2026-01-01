@@ -38,11 +38,19 @@ func PhaseInitialSettlements(game *Game, isFirstPair bool) Phase {
 }
 
 func (p *phaseInitialSettlements) Confirm() Phase {
+
+	player := &p.game.Players[p.game.PlayerTurn]
+
+	if player.SettlementsAvailable <= 0 {
+		p.game.LogAction(fmt.Sprintf("Player %s has no settlements available during initial phase! Skipping...", player.RenderName()))
+		return nextInitialPhase(p.game, p.isFirstPair)
+	}
+
 	if !p.game.Board.SetSettlement(p.cursorCross, p.game.PlayerTurn) {
 		return p
 	}
+
 	if !p.isFirstPair {
-		player := &p.game.Players[p.game.PlayerTurn]
 		adjacentTiles := p.game.Board.AdjacentTiles(p.cursorCross)
 
 		// Collect resources and track what was gained
@@ -70,6 +78,9 @@ func (p *phaseInitialSettlements) Confirm() Phase {
 			p.game.LogAction(fmt.Sprintf("%s gained %s from initial settlement", player.RenderName(), strings.Join(resourceParts, ", ")))
 		}
 	}
+
+	// Decrease available settlements after placing initial ones.
+	player.SettlementsAvailable--
 
 	// Check for game end after building initial settlement (unlikely but for completeness)
 	if winner := p.game.CheckGameEnd(); winner != nil {

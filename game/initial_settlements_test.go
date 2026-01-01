@@ -68,3 +68,18 @@ func TestPlaceSettlementOnExisting(t *testing.T) {
 		t.Fatal("Should not be able to place a settlement on an existing one")
 	}
 }
+
+// Should skip placing initial settlements for player without settlements
+func TestPlaceSettlementWithoutAvailable(t *testing.T) {
+	game := &Game{}
+	game.Start([]string{"p1", "p2", "p3"})
+
+	game.Players[0].SettlementsAvailable = 0
+	// Try to place the settlement
+	game.ConfirmAction(nil)
+
+	// Player's turn should have been skipped
+	if game.PlayerTurn == 0 {
+		t.Fatal("Game should skip placing initial settlement for player without settlements!")
+	}
+}

@@ -139,3 +139,157 @@ func TestRoadPurchase(t *testing.T) {
 		t.Fatalf("Should be in idle phase after building road, got: %T", game.phase)
 	}
 }
+
+// TestCityUpgradeFreesSettlement verifies that upgrading a settlement to a city
+// should return the settlement piece to the player's available pool
+func TestCityUpgradeFreesSettlement(t *testing.T) {
+	game := &Game{}
+	game.Start([]string{"p1", "p2", "p3"})
+
+	player := &game.Players[0]
+	settlementCoord, _ := board.NewCrossCoord(2, 3)
+
+	initialSettlements := player.SettlementsAvailable
+
+	// Place settlement using the initial settlement phase (doesn't require roads)
+	initialPhase := &phaseInitialSettlements{
+		game:        game,
+		cursorCross: settlementCoord,
+		isFirstPair: true,
+	}
+
+	initialPhase.Confirm() // This places settlement on the board
+
+	// BUG: Initial settlements should consume from the available pool
+	if player.SettlementsAvailable != initialSettlements-1 {
+		t.Fatalf("Initial settlement should decrement available settlements from %d to %d, got %d",
+			initialSettlements, initialSettlements-1, player.SettlementsAvailable)
+	}
+
+	settlementsAfterBuilding := player.SettlementsAvailable
+
+	// Give player resources for city and upgrade using the phase
+	player.AddResource(board.ResourceWheat)
+	player.AddResource(board.ResourceWheat)
+	player.AddResource(board.ResourceOre)
+	player.AddResource(board.ResourceOre)
+	player.AddResource(board.ResourceOre)
+
+	cityPhase := &phaseCityPlacement{
+		game:        game,
+		cursorCross: settlementCoord,
+	}
+
+	cityPhase.Confirm() // This upgrades to city
+
+	// BUG: After upgrading to city, the settlement should be freed
+	// The settlement piece should be returned to the available pool
+	if player.SettlementsAvailable != settlementsAfterBuilding+1 {
+		t.Fatalf("Expected settlement to be freed after city upgrade (should increase from %d to %d), got %d",
+			settlementsAfterBuilding, settlementsAfterBuilding+1, player.SettlementsAvailable)
+	}
+}
+
+// TestBuildSettlementDoesNotConsumeResourcesWhenFailing verifies that when
+// BuildSettlement fails, it doesn't consume resources
+func TestBuildSettlementDoesNotConsumeResourcesWhenFailing(t *testing.T) {
+	game := &Game{}
+	game.Start([]string{"p1", "p2", "p3"})
+
+	player := &game.Players[0]
+
+	// Set settlements available to 0
+	player.SettlementsAvailable = 0
+
+	// Give player resources for a settlement
+	player.AddResource(board.ResourceWood)
+	player.AddResource(board.ResourceBrick)
+	player.AddResource(board.ResourceWheat)
+	player.AddResource(board.ResourceSheep)
+
+	resourcesBefore := player.TotalResources()
+
+	// Call BuildSettlement - it should fail
+	success := player.BuildSettlement()
+
+	if success {
+		t.Fatal("BuildSettlement should have returned false when SettlementsAvailable is 0")
+	}
+
+	resourcesAfter := player.TotalResources()
+
+	// BUG: BuildSettlement() consumes resources even when it fails
+	if resourcesAfter != resourcesBefore {
+		t.Fatalf("BuildSettlement should not consume resources when failing, but consumed %d resources",
+			resourcesBefore-resourcesAfter)
+	}
+}
+
+// TestBuildRoadDoesNotConsumeResourcesWhenFailing verifies that when
+// BuildRoad fails, it doesn't consume resources
+func TestBuildRoadDoesNotConsumeResourcesWhenFailing(t *testing.T) {
+	game := &Game{}
+	game.Start([]string{"p1", "p2", "p3"})
+
+	player := &game.Players[0]
+
+	// Set roads available to 0
+	player.RoadsAvailable = 0
+
+	// Give player resources for a road
+	player.AddResource(board.ResourceWood)
+	player.AddResource(board.ResourceBrick)
+
+	resourcesBefore := player.TotalResources()
+
+	// Call BuildRoad - it should fail
+	success := player.BuildRoad()
+
+	if success {
+		t.Fatal("BuildRoad should have returned false when RoadsAvailable is 0")
+	}
+
+	resourcesAfter := player.TotalResources()
+
+	// BUG: BuildRoad() consumes resources even when it fails
+	if resourcesAfter != resourcesBefore {
+		t.Fatalf("BuildRoad should not consume resources when failing, but consumed %d resources",
+			resourcesBefore-resourcesAfter)
+	}
+}
+
+// TestBuildCityDoesNotConsumeResourcesWhenFailing verifies that when
+// BuildCity fails, it doesn't consume resources
+func TestBuildCityDoesNotConsumeResourcesWhenFailing(t *testing.T) {
+	game := &Game{}
+	game.Start([]string{"p1", "p2", "p3"})
+
+	player := &game.Players[0]
+
+	// Set cities available to 0
+	player.CitiesAvailable = 0
+
+	// Give player resources for a city
+	player.AddResource(board.ResourceWheat)
+	player.AddResource(board.ResourceWheat)
+	player.AddResource(board.ResourceOre)
+	player.AddResource(board.ResourceOre)
+	player.AddResource(board.ResourceOre)
+
+	resourcesBefore := player.TotalResources()
+
+	// Call BuildCity - it should fail
+	success := player.BuildCity()
+
+	if success {
+		t.Fatal("BuildCity should have returned false when CitiesAvailable is 0")
+	}
+
+	resourcesAfter := player.TotalResources()
+
+	// BUG: BuildCity() consumes resources even when it fails
+	if resourcesAfter != resourcesBefore {
+		t.Fatalf("BuildCity should not consume resources when failing, but consumed %d resources",
+			resourcesBefore-resourcesAfter)
+	}
+}

@@ -141,6 +141,14 @@ func (p *phaseRoadEnd) Confirm() Phase {
 		}
 	}
 
+	if player.RoadsAvailable <= 0 {
+		if p.continuation == nil {
+			return PhaseIdleWithNotification(p.game, "No roads left to build")
+		} else {
+			return p.continuation
+		}
+	}
+
 	p.game.Board.SetRoad(pathCoord, playerId)
 
 	if p.isFree {

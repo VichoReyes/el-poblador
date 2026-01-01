@@ -18,19 +18,19 @@ func PhaseBuilding(game *Game, previousPhase Phase) Phase {
 	strikethrough := strikethroughStyle()
 
 	if player.CanBuildRoad() {
-		options = append(options, "Road")
+		options = append(options, fmt.Sprintf("Road - %d", player.RoadsAvailable))
 	} else {
 		options = append(options, strikethrough.Render("Road"))
 	}
 
 	if player.CanBuildSettlement() {
-		options = append(options, "Settlement")
+		options = append(options, fmt.Sprintf("Settlement - %d", player.SettlementsAvailable))
 	} else {
 		options = append(options, strikethrough.Render("Settlement"))
 	}
 
 	if player.CanBuildCity() {
-		options = append(options, "City")
+		options = append(options, fmt.Sprintf("City - %d", player.CitiesAvailable))
 	} else {
 		options = append(options, strikethrough.Render("City"))
 	}
@@ -124,6 +124,11 @@ func (p *phaseSettlementPlacement) Confirm() Phase {
 	player := &p.game.Players[p.game.PlayerTurn]
 	playerId := p.game.PlayerTurn
 
+	if player.SettlementsAvailable == 0 {
+		p.invalid = "No settlements left"
+		return p
+	}
+
 	if !p.game.Board.CanPlaceSettlementForPlayer(p.cursorCross, playerId) {
 		p.invalid = "Can't build settlement here"
 		return p
@@ -133,6 +138,8 @@ func (p *phaseSettlementPlacement) Confirm() Phase {
 		p.invalid = "Not enough resources"
 		return p
 	}
+
+	player.SettlementsAvailable--
 
 	p.game.Board.SetSettlement(p.cursorCross, playerId)
 
@@ -189,6 +196,11 @@ func (p *phaseCityPlacement) Confirm() Phase {
 	player := &p.game.Players[p.game.PlayerTurn]
 	playerId := p.game.PlayerTurn
 
+	if player.CitiesAvailable == 0 {
+		p.invalid = "No cities left"
+		return p
+	}
+
 	if !p.game.Board.CanUpgradeToCity(p.cursorCross, playerId) {
 		p.invalid = "Can't upgrade to city here"
 		return p
@@ -198,6 +210,8 @@ func (p *phaseCityPlacement) Confirm() Phase {
 		p.invalid = "Not enough resources"
 		return p
 	}
+
+	player.CitiesAvailable--
 
 	p.game.Board.UpgradeToCity(p.cursorCross, playerId)
 

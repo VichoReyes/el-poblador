@@ -7,11 +7,14 @@ import (
 )
 
 type Player struct {
-	Name           string
-	Color          lipgloss.AdaptiveColor
-	Resources      map[board.ResourceType]int
-	HiddenDevCards []DevCard
-	PlayedDevCards []DevCard
+	Name            	 string
+	Color                lipgloss.AdaptiveColor
+	Resources      	     map[board.ResourceType]int
+	HiddenDevCards 	     []DevCard
+	PlayedDevCards 	     []DevCard
+	RoadsAvailable 	     int
+	CitiesAvailable      int
+	SettlementsAvailable int
 }
 
 func (p *Player) TotalResources() int {
@@ -53,6 +56,9 @@ func (p *Player) CanBuildRoad() bool {
 		board.ResourceWood:  1,
 		board.ResourceBrick: 1,
 	}
+	if (p.RoadsAvailable <= 0) {
+		return false
+	}
 	return p.HasResources(required)
 }
 
@@ -64,6 +70,9 @@ func (p *Player) CanBuildSettlement() bool {
 		board.ResourceWheat: 1,
 		board.ResourceSheep: 1,
 	}
+	if (p.SettlementsAvailable <= 0) {
+		return false
+	}
 	return p.HasResources(required)
 }
 
@@ -72,6 +81,9 @@ func (p *Player) CanBuildCity() bool {
 	required := map[board.ResourceType]int{
 		board.ResourceWheat: 2,
 		board.ResourceOre:   3,
+	}
+	if (p.CitiesAvailable <= 0) {
+		return false
 	}
 	return p.HasResources(required)
 }
@@ -121,7 +133,17 @@ func (p *Player) BuildRoad() bool {
 		board.ResourceWood:  1,
 		board.ResourceBrick: 1,
 	}
-	return p.ConsumeResources(required)
+
+	if !p.CanBuildRoad() {
+		return false
+	}
+
+	if p.ConsumeResources(required) {
+		p.RoadsAvailable--
+		return true
+	}
+
+	return false
 }
 
 // BuildSettlement consumes resources and builds a settlement
@@ -132,7 +154,17 @@ func (p *Player) BuildSettlement() bool {
 		board.ResourceWheat: 1,
 		board.ResourceSheep: 1,
 	}
-	return p.ConsumeResources(required)
+
+	if !p.CanBuildSettlement() {
+		return false
+	}
+
+	if p.ConsumeResources(required) {
+		p.SettlementsAvailable--
+		return true
+	}
+
+	return false
 }
 
 // BuildCity consumes resources and builds a city
@@ -141,7 +173,18 @@ func (p *Player) BuildCity() bool {
 		board.ResourceWheat: 2,
 		board.ResourceOre:   3,
 	}
-	return p.ConsumeResources(required)
+
+	if !p.CanBuildCity() {
+		return false
+	}
+
+	if p.ConsumeResources(required) {
+		p.CitiesAvailable--
+		p.SettlementsAvailable++
+		return true
+	}
+
+	return false
 }
 
 // VictoryPoints calculates the player's current victory points
