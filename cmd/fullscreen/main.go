@@ -1,7 +1,7 @@
 package main
 
 import (
-	"el_poblador/game"
+	"git.sr.ht/~vicho/el_poblador/game"
 	"fmt"
 )
 

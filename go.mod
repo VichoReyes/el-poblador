@@ -1,4 +1,4 @@
-module el_poblador
+module git.sr.ht/~vicho/el_poblador
 
 go 1.23.0
 

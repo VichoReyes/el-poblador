@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"el_poblador/game"
+	"git.sr.ht/~vicho/el_poblador/game"
 	"encoding/gob"
 	"fmt"
 	"os"

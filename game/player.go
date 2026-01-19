@@ -1,7 +1,7 @@
 package game
 
 import (
-	"el_poblador/board"
+	"git.sr.ht/~vicho/el_poblador/board"
 
 	"github.com/charmbracelet/lipgloss"
 )

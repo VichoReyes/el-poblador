@@ -1,7 +1,7 @@
 package main
 
 import (
-	"el_poblador/board"
+	"git.sr.ht/~vicho/el_poblador/board"
 	"fmt"
 	"strings"
 

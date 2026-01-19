@@ -2,7 +2,7 @@ package game
 
 import (
 	"bytes"
-	"el_poblador/board"
+	"git.sr.ht/~vicho/el_poblador/board"
 	"encoding/gob"
 	"fmt"
 	"math/rand/v2"
