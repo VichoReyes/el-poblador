@@ -8,7 +8,7 @@ A terminal-based implementation of Settlers of Catan in Go.
 
 ## Installation
 
-Download the latest release for your platform from [release builds](https://builds.sr.ht/~vicho/el_poblador/commits/main/release.yml).
+Download the latest release for your platform from [release builds](https://builds.sr.ht/~vicho/el_poblador/commits/main/release.yml). Alternatively, you can run `go install git.sr.ht/~vicho/el_poblador@latest`.
 
 Another option is cloning the repo and building from [source](https://git.sr.ht/~vicho/el_poblador/refs). Or making an AUR package. Go wild.
 
