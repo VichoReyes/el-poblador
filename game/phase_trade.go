@@ -359,7 +359,7 @@ func (p *phaseTradePool) Confirm() Phase {
 		selected.Status = OfferIsRetracted
 		return p
 	case CanTakeIsAmbiguous:
-		// Future: could open a counter-offer phase here
+		// TODO: could open a counter-offer phase here
 		// For now, stay in trade pool
 		return p
 	case CanTakeTrue:

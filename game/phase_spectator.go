@@ -181,7 +181,7 @@ func (p *phaseSpectatorTradePool) Confirm(game *Game) SpectatorPhase {
 		// Stay in trade pool - user can try another offer
 		return p
 	case CanTakeIsAmbiguous:
-		// Future: could open a counter-offer phase here
+		// TODO: could open a counter-offer phase here
 		// For now, stay in trade pool
 		return p
 	case CanTakeNotEnoughResources:
