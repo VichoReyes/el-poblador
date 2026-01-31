@@ -2,10 +2,13 @@ package main
 
 import (
 	"bytes"
-	"git.sr.ht/~vicho/el_poblador/game"
 	"encoding/gob"
+	"flag"
 	"fmt"
 	"os"
+
+	"git.sr.ht/~vicho/el_poblador/board"
+	"git.sr.ht/~vicho/el_poblador/game"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -81,12 +84,14 @@ func loadGameState(filename string) (*game.Game, error) {
 
 func printUsage() {
 	fmt.Println("Usage:")
-	fmt.Println("  el_poblador new <player1> <player2> <player3> [player4]")
+	fmt.Println("  el_poblador new [options] <player1> <player2> <player3> [player4]")
 	fmt.Println("  el_poblador load <filename.gob>")
 	fmt.Println()
 	fmt.Println("Commands:")
 	fmt.Println("  new   Start a new game with 3-4 players")
 	fmt.Println("  load  Load a saved game from file")
+	fmt.Println()
+	fmt.Println("Run 'el_poblador <command> -help' for command-specific options.")
 }
 
 func main() {
@@ -107,23 +112,50 @@ func main() {
 
 	switch command {
 	case "new":
-		if len(args) < 4 || len(args) > 5 {
+		newCmd := flag.NewFlagSet("new", flag.ExitOnError)
+		rich := newCmd.Bool("rich", false, "Start all players with 20 of each resource (for testing)")
+		newCmd.Usage = func() {
+			fmt.Println("Usage: el_poblador new [options] <player1> <player2> <player3> [player4]")
+			fmt.Println()
+			fmt.Println("Options:")
+			newCmd.PrintDefaults()
+		}
+		newCmd.Parse(args[1:])
+
+		playerNames := newCmd.Args()
+		if len(playerNames) < 3 || len(playerNames) > 4 {
 			fmt.Println("Error: 'new' command requires 3-4 player names")
 			fmt.Println()
-			printUsage()
+			newCmd.Usage()
 			os.Exit(1)
 		}
+
 		g = &game.Game{}
-		g.Start(args[1:])
+		g.Start(playerNames)
+
+		if *rich {
+			for i := range g.Players {
+				for _, res := range board.RESOURCE_TYPES {
+					g.Players[i].Resources[res] = 20
+				}
+			}
+		}
 
 	case "load":
-		if len(args) != 2 {
+		loadCmd := flag.NewFlagSet("load", flag.ExitOnError)
+		loadCmd.Usage = func() {
+			fmt.Println("Usage: el_poblador load <filename.gob>")
+		}
+		loadCmd.Parse(args[1:])
+
+		if loadCmd.NArg() != 1 {
 			fmt.Println("Error: 'load' command requires a filename")
 			fmt.Println()
-			printUsage()
+			loadCmd.Usage()
 			os.Exit(1)
 		}
-		loadedGame, err := loadGameState(args[1])
+
+		loadedGame, err := loadGameState(loadCmd.Arg(0))
 		if err != nil {
 			fmt.Printf("Failed to load game: %v\n", err)
 			os.Exit(1)
