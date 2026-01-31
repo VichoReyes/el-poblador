@@ -2,9 +2,9 @@ package game
 
 import (
 	"bytes"
-	"git.sr.ht/~vicho/el_poblador/board"
 	"encoding/gob"
 	"fmt"
+	"git.sr.ht/~vicho/el_poblador/board"
 	"math/rand/v2"
 	"os"
 	"strings"

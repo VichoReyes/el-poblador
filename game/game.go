@@ -1,8 +1,8 @@
 package game
 
 import (
-	"git.sr.ht/~vicho/el_poblador/board"
 	"fmt"
+	"git.sr.ht/~vicho/el_poblador/board"
 	"math/rand/v2"
 	"strings"
 
@@ -215,14 +215,14 @@ func (g *Game) Start(playerNames []string) {
 	g.Players = make([]Player, len(playerNames))
 	for i, name := range playerNames {
 		g.Players[i] = Player{
-			Name:           		name,
-			Color:          		colors[i],
-			Resources:      		make(map[board.ResourceType]int),
-			HiddenDevCards: 		make([]DevCard, 0),
-			PlayedDevCards: 		make([]DevCard, 0),
-			CitiesAvailable: 		4,
-			SettlementsAvailable: 	5,
-			RoadsAvailable: 		15,
+			Name:                 name,
+			Color:                colors[i],
+			Resources:            make(map[board.ResourceType]int),
+			HiddenDevCards:       make([]DevCard, 0),
+			PlayedDevCards:       make([]DevCard, 0),
+			CitiesAvailable:      4,
+			SettlementsAvailable: 5,
+			RoadsAvailable:       15,
 		}
 	}
 	rand.Shuffle(len(g.Players), func(i, j int) {

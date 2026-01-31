@@ -1,8 +1,8 @@
 package main
 
 import (
-	"git.sr.ht/~vicho/el_poblador/game"
 	"fmt"
+	"git.sr.ht/~vicho/el_poblador/game"
 )
 
 func main() {

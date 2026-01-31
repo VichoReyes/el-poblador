@@ -1,8 +1,8 @@
 package game
 
 import (
-	"git.sr.ht/~vicho/el_poblador/board"
 	"fmt"
+	"git.sr.ht/~vicho/el_poblador/board"
 )
 
 type phaseBuilding struct {

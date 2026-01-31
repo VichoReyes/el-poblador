@@ -1,8 +1,8 @@
 package main
 
 import (
-	"git.sr.ht/~vicho/el_poblador/board"
 	"fmt"
+	"git.sr.ht/~vicho/el_poblador/board"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"

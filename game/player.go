@@ -7,12 +7,12 @@ import (
 )
 
 type Player struct {
-	Name            	 string
+	Name                 string
 	Color                lipgloss.AdaptiveColor
-	Resources      	     map[board.ResourceType]int
-	HiddenDevCards 	     []DevCard
-	PlayedDevCards 	     []DevCard
-	RoadsAvailable 	     int
+	Resources            map[board.ResourceType]int
+	HiddenDevCards       []DevCard
+	PlayedDevCards       []DevCard
+	RoadsAvailable       int
 	CitiesAvailable      int
 	SettlementsAvailable int
 }
@@ -56,7 +56,7 @@ func (p *Player) CanBuildRoad() bool {
 		board.ResourceWood:  1,
 		board.ResourceBrick: 1,
 	}
-	if (p.RoadsAvailable <= 0) {
+	if p.RoadsAvailable <= 0 {
 		return false
 	}
 	return p.HasResources(required)
@@ -70,7 +70,7 @@ func (p *Player) CanBuildSettlement() bool {
 		board.ResourceWheat: 1,
 		board.ResourceSheep: 1,
 	}
-	if (p.SettlementsAvailable <= 0) {
+	if p.SettlementsAvailable <= 0 {
 		return false
 	}
 	return p.HasResources(required)
@@ -82,7 +82,7 @@ func (p *Player) CanBuildCity() bool {
 		board.ResourceWheat: 2,
 		board.ResourceOre:   3,
 	}
-	if (p.CitiesAvailable <= 0) {
+	if p.CitiesAvailable <= 0 {
 		return false
 	}
 	return p.HasResources(required)
