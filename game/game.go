@@ -2,9 +2,10 @@ package game
 
 import (
 	"fmt"
-	"git.sr.ht/~vicho/el_poblador/board"
 	"math/rand/v2"
 	"strings"
+
+	"git.sr.ht/~vicho/el_poblador/board"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -71,14 +72,26 @@ func (g *Game) NextTurn() Phase {
 	return PhaseDiceRoll(g)
 }
 
-// requestPlayer is the player that the user is playing as.
-// If nil, the game will render from the perspective of the turn holder.
-// twoColumnCycle and oneColumnCycle control which columns are visible in responsive layouts.
-func (g *Game) Print(width, height int, requestPlayer *int, twoColumnCycle, oneColumnCycle int) string {
-	playerPerspective := g.playerPerspective(requestPlayer)
+type PrintOptions struct {
+	Width, Height int
+	// RequestPlayer is the player that the user is playing as.
+	// If nil, the game will render from the perspective of the turn holder.
+	RequestPlayer *int
+	// TwoColumnCycle and OneColumnCycle control which columns are visible in responsive layouts.
+	TwoColumnCycle, OneColumnCycle int
+}
+
+func (g *Game) Print(opts PrintOptions) string {
+	if opts.Width == 0 {
+		opts.Width = 80
+	}
+	if opts.Height == 0 {
+		opts.Height = 32
+	}
+	playerPerspective := g.playerPerspective(opts.RequestPlayer)
 	margin := lipgloss.NewStyle().Margin(1)
 
-	help := g.helpText(width, playerPerspective)
+	help := g.helpText(opts.Width, playerPerspective)
 	sidebar := g.buildSidebar(playerPerspective, margin)
 
 	boardLines := g.Board.Print(g.phase.BoardCursor())
@@ -87,8 +100,8 @@ func (g *Game) Print(width, height int, requestPlayer *int, twoColumnCycle, oneC
 	boardHeight := lipgloss.Height(boardContent)
 
 	var actionLogWidth int
-	if width >= 120 {
-		actionLogWidth = width - boardWidth - 36
+	if opts.Width >= 120 {
+		actionLogWidth = opts.Width - boardWidth - 36
 	} else {
 		actionLogWidth = boardWidth - 4
 	}
@@ -98,16 +111,16 @@ func (g *Game) Print(width, height int, requestPlayer *int, twoColumnCycle, oneC
 	actionLogRendered := actionLogStyle.Render(actionLogContent)
 
 	var layout string
-	if width >= 120 {
+	if opts.Width >= 120 {
 		layout = lipgloss.JoinHorizontal(lipgloss.Top, actionLogRendered, boardContent, sidebar)
-	} else if width >= 90 {
-		if twoColumnCycle == 0 {
+	} else if opts.Width >= 90 {
+		if opts.TwoColumnCycle == 0 {
 			layout = lipgloss.JoinHorizontal(lipgloss.Top, boardContent, sidebar)
 		} else {
 			layout = lipgloss.JoinHorizontal(lipgloss.Top, actionLogRendered, sidebar)
 		}
 	} else {
-		switch oneColumnCycle {
+		switch opts.OneColumnCycle {
 		case 0:
 			layout = sidebar
 		case 1:
@@ -117,8 +130,8 @@ func (g *Game) Print(width, height int, requestPlayer *int, twoColumnCycle, oneC
 		}
 	}
 
-	availableHeight := height - lipgloss.Height(help)
-	mainContent := lipgloss.Place(width, availableHeight, lipgloss.Center, lipgloss.Center, layout)
+	availableHeight := opts.Height - lipgloss.Height(help)
+	mainContent := lipgloss.Place(opts.Width, availableHeight, lipgloss.Center, lipgloss.Center, layout)
 
 	return lipgloss.JoinVertical(lipgloss.Left, mainContent, help)
 }

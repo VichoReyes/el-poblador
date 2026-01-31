@@ -61,7 +61,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	return m.game.Print(m.width, m.height, m.userPlayer, m.twoColumnCycle, m.oneColumnCycle)
+	return m.game.Print(game.PrintOptions{
+		Width:          m.width,
+		Height:         m.height,
+		RequestPlayer:  m.userPlayer,
+		TwoColumnCycle: m.twoColumnCycle,
+		OneColumnCycle: m.oneColumnCycle,
+	})
 }
 
 func loadGameState(filename string) (*game.Game, error) {
