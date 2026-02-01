@@ -205,13 +205,11 @@ func (p *Player) VictoryPoints(game *Game) int {
 
 	// Count settlements and cities on the board
 	playerID := game.getPlayerID(p)
-	if playerID != -1 {
-		// Settlements are worth 1 point each
-		points += game.Board.CountSettlements(playerID)
-		// Cities replace settlements, so they're worth 2 points total (not additional 2)
-		// But in this codebase cities are stored separately from settlements, so count cities as 1 additional point
-		points += game.Board.CountCities(playerID)
-	}
+	// Settlements are worth 1 point each
+	points += game.Board.CountSettlements(playerID)
+	// Cities replace settlements, so they're worth 2 points total (not additional 2)
+	// But in this codebase cities are stored separately from settlements, so count cities as 1 additional point
+	points += game.Board.CountCities(playerID)
 
 	return points
 }

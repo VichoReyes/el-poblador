@@ -158,7 +158,7 @@ func (g *Game) buildSidebar(playerPerspective int, margin lipgloss.Style) string
 	}
 	otherPlayers := margin.Render(strings.Join(playerList, "\n"))
 
-	myPlayer := g.Players[playerPerspective]
+	myPlayer := &g.Players[playerPerspective]
 	myResources := []string{"Your resources:"}
 	for _, resource := range board.RESOURCE_TYPES {
 		myResources = append(myResources, fmt.Sprintf("%s: %d", resource, myPlayer.Resources[resource]))
@@ -326,14 +326,15 @@ func (g *Game) DrawDevelopmentCard() *DevCard {
 	return &card
 }
 
-// getPlayerID returns the player ID for a given player, or -1 if not found
+// getPlayerID returns the player ID for a given player.
+// panics if it can't find the player.
 func (g *Game) getPlayerID(player *Player) int {
 	for i := range g.Players {
 		if &g.Players[i] == player {
 			return i
 		}
 	}
-	return -1
+	panic("Player not found")
 }
 
 // CheckGameEnd checks if any player has won and returns the winner, or nil if game continues
