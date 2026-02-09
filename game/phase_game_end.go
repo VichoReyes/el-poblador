@@ -32,9 +32,7 @@ func (p *phaseGameEnd) BoardCursor() interface{} {
 
 func (p *phaseGameEnd) Menu() string {
 	lines := []string{
-		fmt.Sprintf("🎉 GAME OVER! 🎉"),
-		"",
-		fmt.Sprintf("%s WINS!", p.winner.Render(p.winner.Name)),
+		fmt.Sprintf("%s WINS!", p.winner.RenderName()),
 		"",
 		"Final Scores:",
 	}
@@ -52,5 +50,5 @@ func (p *phaseGameEnd) Menu() string {
 }
 
 func (p *phaseGameEnd) HelpText() string {
-	return fmt.Sprintf("Game complete! %s reached 10 victory points!", p.winner.Render(p.winner.Name))
+	return fmt.Sprintf("Game complete! %s reached 10 victory points!", p.winner.RenderName())
 }
