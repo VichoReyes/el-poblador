@@ -10,7 +10,6 @@ import (
 func (b *Board) Print(cursor interface{}) []string {
 	// there will be 31 lines (5 * 5 + 6 for the roads)
 	lines := make([]strings.Builder, 31)
-	sidePadding(lines)
 
 	for x := 0; x <= 5; x++ {
 		for y := 0; y <= 10; y++ {
@@ -21,13 +20,12 @@ func (b *Board) Print(cursor interface{}) []string {
 		}
 	}
 
-	sidePadding(lines)
-
 	renderedLines := []string{}
 	for i := range lines {
 		renderedLines = append(renderedLines, lines[i].String())
 	}
-	return renderedLines
+
+	return sidePadding(renderedLines)
 }
 
 // takes responsibility for the crossing and whatever is to its right
@@ -120,20 +118,28 @@ func renderPlayerContent(playerColors map[int]lipgloss.AdaptiveColor, playerId i
 	return content
 }
 
-func sidePadding(lines []strings.Builder) {
-	// fake paths, tiles and crossings spaces
-	top := []int{3 + 6 + 3 + 10, 2 + 8 + 2 + 10, 2 + 10 + 2 + 8, 3 + 10, 2 + 10, 2 + 8}
-	// left padding with virtual tiles would go
-	// 2, 2, 1, 0, 1, 2, repeat
-	pattern := []int{2, 2, 1, 0, 1, 2}
-	for i := range lines {
-		base := pattern[i%len(pattern)]
-		if i < len(top) {
-			base += top[i]
+// sidePadding centers the lines by padding to the widest one
+func sidePadding(lines []string) []string {
+	maxWidth := 0
+	for _, line := range lines {
+		width := lipgloss.Width(line)
+		if width > maxWidth {
+			maxWidth = width
 		}
-		if len(lines)-i-1 < len(top) {
-			base += top[len(lines)-i-1]
-		}
-		lines[i].WriteString(strings.Repeat(" ", base))
 	}
+
+	centered := make([]string, len(lines))
+	for i, line := range lines {
+		currentWidth := lipgloss.Width(line)
+		if currentWidth < maxWidth {
+			totalPadding := maxWidth - currentWidth
+			leftPadding := totalPadding / 2
+			rightPadding := totalPadding - leftPadding
+			centered[i] = strings.Repeat(" ", leftPadding) + line + strings.Repeat(" ", rightPadding)
+		} else {
+			centered[i] = line
+		}
+	}
+
+	return centered
 }

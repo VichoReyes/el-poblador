@@ -195,3 +195,25 @@ func TestAdjacentTilesFull(t *testing.T) {
 		t.Errorf("Expected 19 tiles, got %d", len(timesSeen))
 	}
 }
+
+func TestBoardPrintLineWidthConsistency(t *testing.T) {
+	// Create a board with various terrain types
+	board := NewChaoticBoard()
+
+	// Render the board
+	lines := board.Print(nil)
+
+	if len(lines) == 0 {
+		t.Fatal("Board.Print() returned no lines")
+	}
+
+	// Check that all lines have the same lipgloss width
+	expectedWidth := lipgloss.Width(lines[0])
+	for i, line := range lines {
+		actualWidth := lipgloss.Width(line)
+		if actualWidth != expectedWidth {
+			t.Errorf("Line %d has width %d, expected %d\nLine content: %q",
+				i, actualWidth, expectedWidth, line)
+		}
+	}
+}
