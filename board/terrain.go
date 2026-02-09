@@ -45,17 +45,9 @@ type Tile struct {
 }
 
 // RenderTile returns a 5-element array of strings representing the tile
-// looks like this:
-//
-//		/‾‾‾‾‾‾\
-//		/  B  \
-//	    2
-//		\  R  /
-//		\______/
-//
-// where B is the terrain abbreviation, 2 is the dice number, and R is the robber indicator
+// including terrain emoji, dice number, and possibly robber indicator
 func (tile *Tile) RenderTile(isCursor bool, hasRobber bool) [5]string {
-	terrainAbbrev := tile.getTerrainAbbrev()
+	terrainAbbrev := tile.getTerrainEmoji()
 
 	diceStr := ""
 	if tile.DiceNumber > 0 {
@@ -68,38 +60,40 @@ func (tile *Tile) RenderTile(isCursor bool, hasRobber bool) [5]string {
 		style = style.Background(cursorBg)
 	}
 
-	infoLine := "\\        /"
+	robberLine := "\\      /"
 	if hasRobber {
-		infoLine = "\\  ROB   /"
+		robberLine = "\\  💀  /"
 	}
 
 	lines := [5]string{
-		style.Render("/‾‾‾‾‾‾\\"),
+		style.Render("/‾‾‾‾\\"),
 		style.Render(fmt.Sprintf("/  %s  \\", terrainAbbrev)),
-		style.Render(fmt.Sprintf("    %2s    ", diceStr)),
-		style.Render(infoLine),
-		style.Render("\\______/"),
+		style.Render(fmt.Sprintf("   %2s   ", diceStr)),
+		style.Render(robberLine),
+		style.Render("\\____/"),
 	}
 	return lines
 }
 
-// getTerrainAbbrev returns a short abbreviation for the terrain type
-func (tile *Tile) getTerrainAbbrev() string {
+// getTerrainEmoji returns an emoji for the terrain
+// most terminals render these 2-wide but some don't
+// TODO: handle that somehow.
+func (tile *Tile) getTerrainEmoji() string {
 	switch tile.Terrain {
 	case TerrainWood:
-		return "WOOD"
+		return "🪵"
 	case TerrainBrick:
-		return "CLAY"
+		return "🧱"
 	case TerrainOre:
-		return "MNTN"
+		return "🪨"
 	case TerrainWheat:
-		return "WHEA"
+		return "🌾"
 	case TerrainSheep:
-		return "PAST"
+		return "🐑"
 	case TerrainDesert:
-		return "DESE"
+		return "🌵"
 	default:
-		return "????"
+		return "🐞" // bug
 	}
 }
 

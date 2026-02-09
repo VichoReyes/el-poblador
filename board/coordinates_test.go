@@ -130,7 +130,7 @@ func TestTileRender(t *testing.T) {
 	rendered1 := tile.RenderTile(false, false)
 	rendered2 := tile.RenderTile(true, false)
 
-	lengthsExpected := [5]int{8, 10, 10, 10, 8}
+	lengthsExpected := [5]int{6, 8, 8, 8, 6}
 	for i := range rendered1 {
 		actualLength1 := lipgloss.Width(rendered1[i])
 		if actualLength1 != lengthsExpected[i] {

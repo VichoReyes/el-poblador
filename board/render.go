@@ -102,9 +102,9 @@ func renderCrossing(board *Board, lines []strings.Builder, coord CrossCoord, cur
 		pathCoord := NewPathCoord(coord, right)
 		roadOwner, hasRoad := board.Roads[pathCoord]
 		if hasRoad {
-			lines[midLine].WriteString(renderPlayerContent(board.PlayerColors, roadOwner, " ==== "))
+			lines[midLine].WriteString(renderPlayerContent(board.PlayerColors, roadOwner, " == "))
 		} else {
-			lines[midLine].WriteString("      ")
+			lines[midLine].WriteString("    ")
 		}
 	}
 }
