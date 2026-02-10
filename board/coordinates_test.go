@@ -127,8 +127,9 @@ func TestNewDesertBoardTileCount(t *testing.T) {
 
 func TestTileRender(t *testing.T) {
 	tile := Tile{Terrain: TerrainBrick, DiceNumber: 5}
-	rendered1 := tile.RenderTile(false, false)
-	rendered2 := tile.RenderTile(true, false)
+	view := BoardView{}
+	rendered1 := tile.RenderTile(false, false, view)
+	rendered2 := tile.RenderTile(true, false, view)
 
 	lengthsExpected := [5]int{6, 8, 8, 8, 6}
 	for i := range rendered1 {
@@ -201,7 +202,8 @@ func TestBoardPrintLineWidthConsistency(t *testing.T) {
 	board := NewChaoticBoard()
 
 	// Render the board
-	lines := board.Print(nil)
+	view := BoardView{}
+	lines := board.Print(view)
 
 	if len(lines) == 0 {
 		t.Fatal("Board.Print() returned no lines")

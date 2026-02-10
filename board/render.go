@@ -7,7 +7,7 @@ import (
 )
 
 // PrintBoard prints the game board made of ASCII hexagons
-func (b *Board) Print(cursor interface{}) []string {
+func (b *Board) Print(view BoardView) []string {
 	// there will be 31 lines (5 * 5 + 6 for the roads)
 	lines := make([]strings.Builder, 31)
 
@@ -15,7 +15,7 @@ func (b *Board) Print(cursor interface{}) []string {
 		for y := 0; y <= 10; y++ {
 			coord, valid := NewCrossCoord(x, y)
 			if valid {
-				renderCrossing(b, lines, coord, cursor)
+				renderCrossing(b, lines, coord, view)
 			}
 		}
 	}
@@ -30,14 +30,11 @@ func (b *Board) Print(cursor interface{}) []string {
 
 // takes responsibility for the crossing and whatever is to its right
 // right-up and right-down paths
-func renderCrossing(board *Board, lines []strings.Builder, coord CrossCoord, cursor interface{}) {
+func renderCrossing(board *Board, lines []strings.Builder, coord CrossCoord, view BoardView) {
 	// print crossing
 	midLine := coord.Y * 3
 	settlementOwner, hasSettlement := board.Settlements[coord]
-	hasCursor := false
-	if c, ok := cursor.(CrossCoord); ok && c == coord {
-		hasCursor = true
-	}
+	hasCursor := view.CrossCursor != nil && *view.CrossCursor == coord
 	if hasCursor {
 		cursorColor := lipgloss.AdaptiveColor{Light: "#0277BD", Dark: "#4FC3F7"}
 		style := lipgloss.NewStyle().Foreground(cursorColor).Blink(true)
@@ -81,13 +78,10 @@ func renderCrossing(board *Board, lines []strings.Builder, coord CrossCoord, cur
 		}
 		tileCoord, valid := NewTileCoord(coord.X, coord.Y)
 		if valid {
-			hasCursor := false
-			if c, ok := cursor.(TileCoord); ok && c == tileCoord {
-				hasCursor = true
-			}
+			hasCursor := view.TileCursor != nil && *view.TileCursor == tileCoord
 			tile := board.Tiles[tileCoord]
 			hasRobber := board.Robber == tileCoord
-			renderedTile := tile.RenderTile(hasCursor, hasRobber)
+			renderedTile := tile.RenderTile(hasCursor, hasRobber, view)
 			lines[midLine-2].WriteString(renderedTile[0])
 			lines[midLine-1].WriteString(renderedTile[1])
 			lines[midLine].WriteString(renderedTile[2])

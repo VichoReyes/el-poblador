@@ -22,6 +22,7 @@ func main() {
 		{Terrain: board.TerrainDesert, DiceNumber: 0}, // Desert has no dice
 	}
 
+	view := board.BoardView{}
 	for i, tile := range tiles {
 		fmt.Printf("Tile %d (%s, dice: %d):\n", i+1, tile.Terrain.String(), tile.DiceNumber)
 		// Test robber rendering on tile 3 (Ore, dice 12)
@@ -29,7 +30,7 @@ func main() {
 		if hasRobber {
 			fmt.Printf("  (with robber)\n")
 		}
-		rendered := tile.RenderTile(false, hasRobber)
+		rendered := tile.RenderTile(false, hasRobber, view)
 		for i, line := range rendered {
 			if i == 0 || i == len(rendered)-1 {
 				fmt.Printf(" %s\n", line)
@@ -53,7 +54,7 @@ func main() {
 		fmt.Printf("Robber placed on the board for testing\n\n")
 	}
 
-	lines := boardInstance.Print(nil)
+	lines := boardInstance.Print(view)
 
 	total := strings.Join(lines, "\n")
 	fmt.Println(total)

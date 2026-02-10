@@ -46,7 +46,7 @@ type Tile struct {
 
 // RenderTile returns a 5-element array of strings representing the tile
 // including terrain emoji, dice number, and possibly robber indicator
-func (tile *Tile) RenderTile(isCursor bool, hasRobber bool) [5]string {
+func (tile *Tile) RenderTile(isCursor bool, hasRobber bool, view BoardView) [5]string {
 	terrainAbbrev := tile.getTerrainEmoji()
 
 	diceStr := ""

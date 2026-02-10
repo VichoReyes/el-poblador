@@ -94,7 +94,17 @@ func (g *Game) Print(opts PrintOptions) string {
 	help := g.helpText(opts.Width, playerPerspective)
 	sidebar := g.buildSidebar(playerPerspective, margin)
 
-	boardLines := g.Board.Print(g.phase.BoardCursor())
+	// Construct BoardView from current phase cursor
+	view := board.BoardView{}
+	cursor := g.phase.BoardCursor()
+	switch c := cursor.(type) {
+	case board.TileCoord:
+		view.TileCursor = &c
+	case board.CrossCoord:
+		view.CrossCursor = &c
+	}
+
+	boardLines := g.Board.Print(view)
 	boardContent := strings.Join(boardLines, "\n")
 	boardWidth := lipgloss.Width(boardContent)
 	boardHeight := lipgloss.Height(boardContent)
