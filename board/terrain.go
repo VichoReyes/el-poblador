@@ -79,11 +79,11 @@ func (tile *Tile) RenderTile(isCursor bool, hasRobber bool, view BoardView) [5]s
 	return lines
 }
 
-// getTerrainDisplay returns either an emoji or 2-character text abbreviation
-// for the terrain, depending on useEmoji parameter
-func (tile *Tile) getTerrainDisplay(useEmoji bool) string {
+// terrainDisplay returns either an emoji or 2-character text abbreviation
+// for the terrain type, depending on useEmoji parameter
+func terrainDisplay(terrain TerrainType, useEmoji bool) string {
 	if useEmoji {
-		switch tile.Terrain {
+		switch terrain {
 		case TerrainWood:
 			return "🪵"
 		case TerrainBrick:
@@ -97,10 +97,10 @@ func (tile *Tile) getTerrainDisplay(useEmoji bool) string {
 		case TerrainDesert:
 			return "🌵"
 		default:
-			return "🐞" // bug
+			panic(fmt.Sprintf("unknown terrain type: %d", terrain))
 		}
 	} else {
-		switch tile.Terrain {
+		switch terrain {
 		case TerrainWood:
 			return "WD"
 		case TerrainBrick:
@@ -114,9 +114,15 @@ func (tile *Tile) getTerrainDisplay(useEmoji bool) string {
 		case TerrainDesert:
 			return "DS"
 		default:
-			return "??"
+			panic(fmt.Sprintf("unknown terrain type: %d", terrain))
 		}
 	}
+}
+
+// getTerrainDisplay returns either an emoji or 2-character text abbreviation
+// for the tile's terrain
+func (tile *Tile) getTerrainDisplay(useEmoji bool) string {
+	return terrainDisplay(tile.Terrain, useEmoji)
 }
 
 // getTerrainStyle returns the lipgloss style for the terrain
@@ -175,6 +181,29 @@ func (r ResourceType) String() string {
 	default:
 		return "Unknown"
 	}
+}
+
+// Display returns either an emoji or 2-character text abbreviation for the resource
+// by reusing the terrain display logic
+func (r ResourceType) Display(useEmoji bool) string {
+	// Convert ResourceType to corresponding TerrainType (inverse of TileResource)
+	var terrain TerrainType
+	switch r {
+	case ResourceOre:
+		terrain = TerrainOre
+	case ResourceWood:
+		terrain = TerrainWood
+	case ResourceSheep:
+		terrain = TerrainSheep
+	case ResourceWheat:
+		terrain = TerrainWheat
+	case ResourceBrick:
+		terrain = TerrainBrick
+	default:
+		panic(fmt.Sprintf("unknown resource type: %d", r))
+	}
+
+	return terrainDisplay(terrain, useEmoji)
 }
 
 func TileResource(t Tile) (ResourceType, bool) {

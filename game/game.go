@@ -94,7 +94,7 @@ func (g *Game) Print(opts PrintOptions) string {
 	margin := lipgloss.NewStyle().Margin(1)
 
 	help := g.helpText(opts.Width, playerPerspective)
-	sidebar := g.buildSidebar(playerPerspective, margin)
+	sidebar := g.buildSidebar(playerPerspective, margin, opts.UseEmoji)
 
 	// Construct BoardView from current phase cursor
 	view := board.BoardView{
@@ -150,7 +150,7 @@ func (g *Game) Print(opts PrintOptions) string {
 	return lipgloss.JoinVertical(lipgloss.Left, mainContent, help)
 }
 
-func (g *Game) buildSidebar(playerPerspective int, margin lipgloss.Style) string {
+func (g *Game) buildSidebar(playerPerspective int, margin lipgloss.Style, useEmoji bool) string {
 	var dice string
 	if g.LastDice[0] != 0 {
 		dice = fmt.Sprintf("Dice: %d (%d + %d)", g.LastDice[0]+g.LastDice[1], g.LastDice[0], g.LastDice[1])
@@ -173,12 +173,25 @@ func (g *Game) buildSidebar(playerPerspective int, margin lipgloss.Style) string
 	otherPlayers := margin.Render(strings.Join(playerList, "\n"))
 
 	myPlayer := &g.Players[playerPerspective]
-	myResources := []string{"Your resources:"}
-	for _, resource := range board.RESOURCE_TYPES {
-		myResources = append(myResources, fmt.Sprintf("%s: %d", resource, myPlayer.Resources[resource]))
+
+	// Build resource table: resource types on top row, counts on bottom row
+	var resourceRow, countRow strings.Builder
+	for i, resource := range board.RESOURCE_TYPES {
+		if i > 0 {
+			resourceRow.WriteString("  ")
+			countRow.WriteString("  ")
+		}
+		resourceRow.WriteString(resource.Display(useEmoji))
+		countRow.WriteString(fmt.Sprintf("%2d", myPlayer.Resources[resource]))
 	}
-	myResources = append(myResources, "")
-	myResources = append(myResources, fmt.Sprintf("Dev Cards: %d", myPlayer.TotalDevCards()))
+
+	myResources := []string{
+		"Your resources:",
+		resourceRow.String(),
+		countRow.String(),
+		"",
+		fmt.Sprintf("Dev Cards: %d", myPlayer.TotalDevCards()),
+	}
 	myResourcesStr := margin.Render(strings.Join(myResources, "\n"))
 
 	var phaseSidebar string
