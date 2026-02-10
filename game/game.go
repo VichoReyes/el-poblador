@@ -179,7 +179,6 @@ func (g *Game) buildSidebar(playerPerspective int, margin lipgloss.Style) string
 	}
 	myResources = append(myResources, "")
 	myResources = append(myResources, fmt.Sprintf("Dev Cards: %d", myPlayer.TotalDevCards()))
-	myResources = append(myResources, fmt.Sprintf("Victory Points: %d", myPlayer.VictoryPoints(g)))
 	myResourcesStr := margin.Render(strings.Join(myResources, "\n"))
 
 	var phaseSidebar string
@@ -196,7 +195,7 @@ func (g *Game) buildSidebar(playerPerspective int, margin lipgloss.Style) string
 	}
 
 	sidebar := lipgloss.JoinVertical(lipgloss.Left, dice, otherPlayers, myResourcesStr, phaseSidebar)
-	return lipgloss.NewStyle().Width(30).Render(sidebar)
+	return lipgloss.NewStyle().Width(34).Render(sidebar)
 }
 
 func (g *Game) playerPerspective(requestPlayer *int) int {
