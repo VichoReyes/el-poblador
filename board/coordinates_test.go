@@ -127,20 +127,30 @@ func TestNewDesertBoardTileCount(t *testing.T) {
 
 func TestTileRender(t *testing.T) {
 	tile := Tile{Terrain: TerrainBrick, DiceNumber: 5}
-	view := BoardView{}
-	rendered1 := tile.RenderTile(false, false, view)
-	rendered2 := tile.RenderTile(true, false, view)
-
 	lengthsExpected := [5]int{6, 8, 8, 8, 6}
-	for i := range rendered1 {
-		actualLength1 := lipgloss.Width(rendered1[i])
-		if actualLength1 != lengthsExpected[i] {
-			t.Errorf("Expected line %d to be %d characters long, got %d", i, lengthsExpected[i], actualLength1)
+
+	// Test both emoji and text modes
+	for _, useEmoji := range []bool{true, false} {
+		modeName := "text"
+		if useEmoji {
+			modeName = "emoji"
 		}
-		actualLength2 := lipgloss.Width(rendered2[i])
-		if actualLength2 != lengthsExpected[i] {
-			t.Errorf("Expected line %d to be %d characters long, got %d", i, lengthsExpected[i], actualLength2)
-		}
+		t.Run(modeName, func(t *testing.T) {
+			view := BoardView{UseEmoji: useEmoji}
+			rendered1 := tile.RenderTile(false, false, view)
+			rendered2 := tile.RenderTile(true, false, view)
+
+			for i := range rendered1 {
+				actualLength1 := lipgloss.Width(rendered1[i])
+				if actualLength1 != lengthsExpected[i] {
+					t.Errorf("Expected line %d to be %d characters long, got %d", i, lengthsExpected[i], actualLength1)
+				}
+				actualLength2 := lipgloss.Width(rendered2[i])
+				if actualLength2 != lengthsExpected[i] {
+					t.Errorf("Expected line %d to be %d characters long, got %d", i, lengthsExpected[i], actualLength2)
+				}
+			}
+		})
 	}
 }
 

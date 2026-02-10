@@ -79,6 +79,8 @@ type PrintOptions struct {
 	RequestPlayer *int
 	// TwoColumnCycle and OneColumnCycle control which columns are visible in responsive layouts.
 	TwoColumnCycle, OneColumnCycle int
+	// UseEmoji controls whether to render terrain with emojis or text abbreviations.
+	UseEmoji bool
 }
 
 func (g *Game) Print(opts PrintOptions) string {
@@ -95,7 +97,9 @@ func (g *Game) Print(opts PrintOptions) string {
 	sidebar := g.buildSidebar(playerPerspective, margin)
 
 	// Construct BoardView from current phase cursor
-	view := board.BoardView{}
+	view := board.BoardView{
+		UseEmoji: opts.UseEmoji,
+	}
 	cursor := g.phase.BoardCursor()
 	switch c := cursor.(type) {
 	case board.TileCoord:

@@ -45,9 +45,9 @@ type Tile struct {
 }
 
 // RenderTile returns a 5-element array of strings representing the tile
-// including terrain emoji, dice number, and possibly robber indicator
+// including terrain emoji/text, dice number, and possibly robber indicator
 func (tile *Tile) RenderTile(isCursor bool, hasRobber bool, view BoardView) [5]string {
-	terrainAbbrev := tile.getTerrainEmoji()
+	terrainDisplay := tile.getTerrainDisplay(view.UseEmoji)
 
 	diceStr := ""
 	if tile.DiceNumber > 0 {
@@ -62,12 +62,16 @@ func (tile *Tile) RenderTile(isCursor bool, hasRobber bool, view BoardView) [5]s
 
 	robberLine := "\\      /"
 	if hasRobber {
-		robberLine = "\\  💀  /"
+		if view.UseEmoji {
+			robberLine = "\\  💀  /"
+		} else {
+			robberLine = "\\  RB  /"
+		}
 	}
 
 	lines := [5]string{
 		style.Render("/‾‾‾‾\\"),
-		style.Render(fmt.Sprintf("/  %s  \\", terrainAbbrev)),
+		style.Render(fmt.Sprintf("/  %s  \\", terrainDisplay)),
 		style.Render(fmt.Sprintf("   %2s   ", diceStr)),
 		style.Render(robberLine),
 		style.Render("\\____/"),
@@ -75,25 +79,43 @@ func (tile *Tile) RenderTile(isCursor bool, hasRobber bool, view BoardView) [5]s
 	return lines
 }
 
-// getTerrainEmoji returns an emoji for the terrain
-// most terminals render these 2-wide but some don't
-// TODO: handle that somehow.
-func (tile *Tile) getTerrainEmoji() string {
-	switch tile.Terrain {
-	case TerrainWood:
-		return "🪵"
-	case TerrainBrick:
-		return "🧱"
-	case TerrainOre:
-		return "🪨"
-	case TerrainWheat:
-		return "🌾"
-	case TerrainSheep:
-		return "🐑"
-	case TerrainDesert:
-		return "🌵"
-	default:
-		return "🐞" // bug
+// getTerrainDisplay returns either an emoji or 2-character text abbreviation
+// for the terrain, depending on useEmoji parameter
+func (tile *Tile) getTerrainDisplay(useEmoji bool) string {
+	if useEmoji {
+		switch tile.Terrain {
+		case TerrainWood:
+			return "🪵"
+		case TerrainBrick:
+			return "🧱"
+		case TerrainOre:
+			return "🪨"
+		case TerrainWheat:
+			return "🌾"
+		case TerrainSheep:
+			return "🐑"
+		case TerrainDesert:
+			return "🌵"
+		default:
+			return "🐞" // bug
+		}
+	} else {
+		switch tile.Terrain {
+		case TerrainWood:
+			return "WD"
+		case TerrainBrick:
+			return "BR"
+		case TerrainOre:
+			return "OR"
+		case TerrainWheat:
+			return "WH"
+		case TerrainSheep:
+			return "SH"
+		case TerrainDesert:
+			return "DS"
+		default:
+			return "??"
+		}
 	}
 }
 

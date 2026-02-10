@@ -16,5 +16,5 @@ func main() {
 	}
 	g.ConfirmAction(nil) // roll dice
 
-	fmt.Println(g.Print(game.PrintOptions{Width: 100}))
+	fmt.Println(g.Print(game.PrintOptions{Width: 100, UseEmoji: true}))
 }

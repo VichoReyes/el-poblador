@@ -4,6 +4,7 @@ package board
 // for displaying the board. This is transient view state that should not
 // be serialized with game state.
 type BoardView struct {
+	UseEmoji    bool
 	TileCursor  *TileCoord  // nil when no tile is selected
 	CrossCursor *CrossCoord // nil when no crossing is selected
 }

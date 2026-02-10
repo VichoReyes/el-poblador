@@ -20,6 +20,7 @@ type model struct {
 	userPlayer     *int
 	twoColumnCycle int // 0-1: for width 90-119
 	oneColumnCycle int // 0-2: for width <90
+	useEmoji       bool
 }
 
 func (m model) Init() tea.Cmd {
@@ -67,6 +68,7 @@ func (m model) View() string {
 		RequestPlayer:  m.userPlayer,
 		TwoColumnCycle: m.twoColumnCycle,
 		OneColumnCycle: m.oneColumnCycle,
+		UseEmoji:       m.useEmoji,
 	})
 }
 
@@ -115,11 +117,13 @@ func main() {
 
 	command := args[0]
 	var g *game.Game
+	var useEmoji bool
 
 	switch command {
 	case "new":
 		newCmd := flag.NewFlagSet("new", flag.ExitOnError)
 		rich := newCmd.Bool("rich", false, "Start all players with 20 of each resource (for testing)")
+		noEmoji := newCmd.Bool("no-emoji", false, "Don't use emojis, they break board alignment on some terminals")
 		newCmd.Usage = func() {
 			fmt.Println("Usage: el_poblador new [options] <player1> <player2> <player3> [player4]")
 			fmt.Println()
@@ -127,6 +131,7 @@ func main() {
 			newCmd.PrintDefaults()
 		}
 		newCmd.Parse(args[1:])
+		useEmoji = !*noEmoji
 
 		playerNames := newCmd.Args()
 		if len(playerNames) < 3 || len(playerNames) > 4 {
@@ -149,10 +154,15 @@ func main() {
 
 	case "load":
 		loadCmd := flag.NewFlagSet("load", flag.ExitOnError)
+		noEmoji := loadCmd.Bool("no-emoji", false, "Don't use emojis, they break board alignment on some terminals")
 		loadCmd.Usage = func() {
-			fmt.Println("Usage: el_poblador load <filename.gob>")
+			fmt.Println("Usage: el_poblador load [options] <filename.gob>")
+			fmt.Println()
+			fmt.Println("Options:")
+			loadCmd.PrintDefaults()
 		}
 		loadCmd.Parse(args[1:])
+		useEmoji = !*noEmoji
 
 		if loadCmd.NArg() != 1 {
 			fmt.Println("Error: 'load' command requires a filename")
@@ -175,7 +185,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	p := tea.NewProgram(model{game: g}, tea.WithAltScreen())
+	p := tea.NewProgram(model{game: g, useEmoji: useEmoji}, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)

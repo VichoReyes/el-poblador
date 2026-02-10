@@ -22,7 +22,7 @@ func main() {
 		{Terrain: board.TerrainDesert, DiceNumber: 0}, // Desert has no dice
 	}
 
-	view := board.BoardView{}
+	view := board.BoardView{UseEmoji: true}
 	for i, tile := range tiles {
 		fmt.Printf("Tile %d (%s, dice: %d):\n", i+1, tile.Terrain.String(), tile.DiceNumber)
 		// Test robber rendering on tile 3 (Ore, dice 12)
