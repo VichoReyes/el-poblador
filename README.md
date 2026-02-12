@@ -4,7 +4,7 @@
 
 A terminal-based implementation of Settlers of Catan in Go.
 
-![game screenshot](screenshot.png)
+![game screenshot](screenshot.jpg)
 
 ## Installation
 
@@ -34,7 +34,7 @@ go run main.go load <savefile>
 - Esc: Cancel action (not always available)
 - 1-4: Switch to specific player's perspective
 - 0: Switch back to current turn holder's perspective
-- q/Ctrl+C: Quit game  (to be removed)
+- Ctrl+C: Quit game without saving
 
 ## Online Multiplayer
 
@@ -43,4 +43,4 @@ It would be cool to have, though.
 
 ## License
 
-EUPL v1.2, in spanish
+EUPL v1.2
