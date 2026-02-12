@@ -72,6 +72,8 @@ func (g *Game) NextTurn() Phase {
 	return PhaseDiceRoll(g)
 }
 
+const sidebarWidth = 34
+
 type PrintOptions struct {
 	Width, Height int
 	// RequestPlayer is the player that the user is playing as.
@@ -112,22 +114,26 @@ func (g *Game) Print(opts PrintOptions) string {
 	boardContent := strings.Join(boardLines, "\n")
 	boardWidth := lipgloss.Width(boardContent)
 	boardHeight := lipgloss.Height(boardContent)
+	actionLogDecor := 4 // border + margin
+	minActionLogWidth := 30
+	threeColMin := boardWidth + sidebarWidth + minActionLogWidth + actionLogDecor
+	twoColMin := boardWidth + sidebarWidth
 
 	var actionLogWidth int
-	if opts.Width >= 120 {
-		actionLogWidth = opts.Width - boardWidth - 36
+	if opts.Width >= threeColMin {
+		actionLogWidth = opts.Width - boardWidth - sidebarWidth - 2
 	} else {
-		actionLogWidth = boardWidth - 4
+		actionLogWidth = boardWidth - actionLogDecor
 	}
 
-	actionLogStyle := margin.Border(lipgloss.NormalBorder()).Width(actionLogWidth).Height(boardHeight - 4)
+	actionLogStyle := margin.Border(lipgloss.NormalBorder()).Width(actionLogWidth).Height(boardHeight - actionLogDecor)
 	actionLogContent := strings.Join(g.ActionLog, "\n")
 	actionLogRendered := actionLogStyle.Render(actionLogContent)
 
 	var layout string
-	if opts.Width >= 120 {
+	if opts.Width >= threeColMin {
 		layout = lipgloss.JoinHorizontal(lipgloss.Top, actionLogRendered, boardContent, sidebar)
-	} else if opts.Width >= 90 {
+	} else if opts.Width >= twoColMin {
 		if opts.TwoColumnCycle == 0 {
 			layout = lipgloss.JoinHorizontal(lipgloss.Top, boardContent, sidebar)
 		} else {
@@ -208,7 +214,7 @@ func (g *Game) buildSidebar(playerPerspective int, margin lipgloss.Style, useEmo
 	}
 
 	sidebar := lipgloss.JoinVertical(lipgloss.Left, dice, otherPlayers, myResourcesStr, phaseSidebar)
-	return lipgloss.NewStyle().Width(34).Render(sidebar)
+	return lipgloss.NewStyle().Width(sidebarWidth).Render(sidebar)
 }
 
 func (g *Game) playerPerspective(requestPlayer *int) int {
