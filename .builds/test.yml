@@ -9,3 +9,7 @@ tasks:
       go vet ./...
       go run cmd/testboard/main.go
       go run cmd/fullscreen/main.go
+submitter:
+  git.sr.ht:
+    allow-refs:
+      - "refs/heads/*"
