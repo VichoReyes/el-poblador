@@ -11,30 +11,30 @@ import (
 )
 
 type Phase interface {
-	Confirm() Phase
-	MoveCursor(direction string)
+	ConfirmTurn() (Phase, EnterMode)
+	PhaseView
 	BoardCursor() interface{}
-	HelpText() string
 }
 
-type PhaseWithMenu interface {
-	Phase
+type PhaseView interface {
+	MoveCursor(direction string)
+	HelpText() string
 	Menu() string
 }
 
-type PhaseCancelable interface {
-	Phase
-	Cancel() Phase
-}
+type EnterMode int
+
+const (
+	EnterPush EnterMode = iota
+	EnterReplace
+	EnterReset
+)
 
 // SpectatorPhase is the interface for non-turn holder phases
 // All spectator phases should store their playerID internally
 type SpectatorPhase interface {
-	Confirm(game *Game) SpectatorPhase
-	Cancel(game *Game) SpectatorPhase
-	MoveCursor(direction string)
-	HelpText() string
-	Menu() string
+	ConfirmSpectator() (SpectatorPhase, EnterMode)
+	PhaseView
 }
 
 func (g *Game) LogAction(action string) {
@@ -49,10 +49,10 @@ type Game struct {
 	Board    *board.Board
 	Players  []Player
 	LastDice [2]int
-	// the turn holder's state
-	phase Phase
-	// the other players' states
-	spectatorPhases map[int]SpectatorPhase
+	// stack backing the turn holder state
+	phaseStack []Phase
+	// stacks backing the other players' states
+	spectatorPhaseStacks map[int][]SpectatorPhase
 	// who is the turn holder
 	PlayerTurn  int
 	DevCardDeck []DevCard
@@ -63,7 +63,7 @@ type Game struct {
 
 // reset states, and return first Phase of next turn
 func (g *Game) NextTurn() Phase {
-	g.spectatorPhases = nil
+	g.spectatorPhaseStacks = nil
 	g.TradeOffers = nil
 	g.PlayerTurn++
 	g.PlayerTurn %= len(g.Players)
@@ -102,7 +102,11 @@ func (g *Game) Print(opts PrintOptions) string {
 	view := board.BoardView{
 		UseEmoji: opts.UseEmoji,
 	}
-	cursor := g.phase.BoardCursor()
+	phase := g.Phase()
+	if phase == nil {
+		return ""
+	}
+	cursor := phase.BoardCursor()
 	switch c := cursor.(type) {
 	case board.TileCoord:
 		view.TileCursor = &c
@@ -202,13 +206,11 @@ func (g *Game) buildSidebar(playerPerspective int, margin lipgloss.Style, useEmo
 
 	var phaseSidebar string
 	if playerPerspective == g.PlayerTurn {
-		// Show turn holder's phase menu
-		if p, ok := g.phase.(PhaseWithMenu); ok {
-			phaseSidebar = margin.Render(p.Menu())
+		if phase := g.Phase(); phase != nil {
+			phaseSidebar = margin.Render(phase.Menu())
 		}
 	} else {
-		// Show spectator's phase menu
-		if spectatorPhase, ok := g.spectatorPhases[playerPerspective]; ok {
+		if spectatorPhase, ok := g.SpectatorPhase(playerPerspective); ok {
 			phaseSidebar = margin.Render(spectatorPhase.Menu())
 		}
 	}
@@ -231,10 +233,14 @@ func (g *Game) helpText(width int, playerPerspective int) string {
 
 	if playerPerspective == g.PlayerTurn {
 		// Turn holder sees their phase help text
-		helpMsg = fmt.Sprintf("%s's turn. %s", turnPlayer.Render(turnPlayer.Name), g.phase.HelpText())
+		if phase := g.Phase(); phase != nil {
+			helpMsg = fmt.Sprintf("%s's turn. %s", turnPlayer.Render(turnPlayer.Name), phase.HelpText())
+		} else {
+			helpMsg = fmt.Sprintf("%s's turn.", turnPlayer.Render(turnPlayer.Name))
+		}
 	} else {
 		// Spectator sees their spectator phase help text
-		if spectatorPhase, ok := g.spectatorPhases[playerPerspective]; ok {
+		if spectatorPhase, ok := g.SpectatorPhase(playerPerspective); ok {
 			helpMsg = fmt.Sprintf("%s's turn. %s", turnPlayer.Render(turnPlayer.Name), spectatorPhase.HelpText())
 		} else {
 			// No spectator phase yet (before dice roll)
@@ -280,7 +286,7 @@ func (g *Game) Start(playerNames []string) {
 	}
 	g.Board = board.NewLegalBoard(playerColors)
 	g.PlayerTurn = 0
-	g.phase = PhaseInitialSettlements(g, true)
+	g.phaseStack = []Phase{PhaseInitialSettlements(g, true)}
 	g.DevCardDeck = shuffleDevCards()
 	g.ActionLog = make([]string, 0, 15)
 }
@@ -290,10 +296,12 @@ func (g *Game) MoveCursor(direction string, requestPlayer *int) {
 
 	if playerPerspective == g.PlayerTurn {
 		// Turn holder moves cursor in their phase
-		g.phase.MoveCursor(direction)
+		if phase := g.Phase(); phase != nil {
+			phase.MoveCursor(direction)
+		}
 	} else {
 		// Spectator moves cursor in their spectator phase
-		if spectatorPhase, ok := g.spectatorPhases[playerPerspective]; ok {
+		if spectatorPhase, ok := g.SpectatorPhase(playerPerspective); ok {
 			spectatorPhase.MoveCursor(direction)
 		}
 	}
@@ -312,7 +320,7 @@ func (g *Game) MoveCursorToPlaceSettlement() {
 		}
 		panic("no valid settlement location found")
 	}
-	if p, ok := g.phase.(*phaseInitialSettlements); ok {
+	if p, ok := g.Phase().(*phaseInitialSettlements); ok {
 		p.cursorCross = find()
 	}
 }
@@ -321,12 +329,14 @@ func (g *Game) ConfirmAction(requestPlayer *int) {
 	playerPerspective := g.playerPerspective(requestPlayer)
 
 	if playerPerspective == g.PlayerTurn {
-		// Turn holder confirms their action
-		g.phase = g.phase.Confirm()
+		if phase := g.Phase(); phase != nil {
+			next, mode := phase.ConfirmTurn()
+			g.applyTurnTransition(next, mode)
+		}
 	} else {
-		// Spectator confirms their action
-		if spectatorPhase, ok := g.spectatorPhases[playerPerspective]; ok {
-			g.spectatorPhases[playerPerspective] = spectatorPhase.Confirm(g)
+		if spectatorPhase, ok := g.SpectatorPhase(playerPerspective); ok {
+			next, mode := spectatorPhase.ConfirmSpectator()
+			g.applySpectatorTransition(playerPerspective, next, mode)
 		}
 	}
 }
@@ -335,16 +345,80 @@ func (g *Game) CancelAction(requestPlayer *int) {
 	playerPerspective := g.playerPerspective(requestPlayer)
 
 	if playerPerspective == g.PlayerTurn {
-		// Turn holder cancels their action
-		if p, ok := g.phase.(PhaseCancelable); ok {
-			g.phase = p.Cancel()
+		g.ensureTurnStack()
+		if len(g.phaseStack) > 1 {
+			g.phaseStack = g.phaseStack[:len(g.phaseStack)-1]
 		}
 	} else {
-		// Spectator cancels their action
-		if spectatorPhase, ok := g.spectatorPhases[playerPerspective]; ok {
-			g.spectatorPhases[playerPerspective] = spectatorPhase.Cancel(g)
+		if _, ok := g.SpectatorPhase(playerPerspective); ok {
+			g.ensureSpectatorStack(playerPerspective)
+			stack := g.spectatorPhaseStacks[playerPerspective]
+			if len(stack) > 1 {
+				stack = stack[:len(stack)-1]
+				g.spectatorPhaseStacks[playerPerspective] = stack
+			}
 		}
 	}
+}
+
+func (g *Game) ensureTurnStack() {
+	if len(g.phaseStack) == 0 {
+		return
+	}
+}
+
+func (g *Game) applyTurnTransition(next Phase, mode EnterMode) {
+	if next == nil {
+		return
+	}
+	g.ensureTurnStack()
+	switch mode {
+	case EnterPush:
+		g.phaseStack = append(g.phaseStack, next)
+	case EnterReplace:
+		if len(g.phaseStack) == 0 {
+			g.phaseStack = []Phase{next}
+		} else {
+			g.phaseStack[len(g.phaseStack)-1] = next
+		}
+	case EnterReset:
+		g.phaseStack = []Phase{next}
+	default:
+		panic("unknown turn enter mode")
+	}
+}
+
+func (g *Game) ensureSpectatorStack(playerID int) {
+	if g.spectatorPhaseStacks == nil {
+		g.spectatorPhaseStacks = make(map[int][]SpectatorPhase)
+	}
+	stack := g.spectatorPhaseStacks[playerID]
+	if len(stack) == 0 {
+		return
+	}
+}
+
+func (g *Game) applySpectatorTransition(playerID int, next SpectatorPhase, mode EnterMode) {
+	if next == nil {
+		return
+	}
+	g.ensureSpectatorStack(playerID)
+	stack := g.spectatorPhaseStacks[playerID]
+	switch mode {
+	case EnterPush:
+		stack = append(stack, next)
+	case EnterReplace:
+		if len(stack) == 0 {
+			stack = []SpectatorPhase{next}
+		} else {
+			stack[len(stack)-1] = next
+		}
+	case EnterReset:
+		stack = []SpectatorPhase{next}
+	default:
+		panic("unknown spectator enter mode")
+	}
+	g.spectatorPhaseStacks[playerID] = stack
 }
 
 // DrawDevelopmentCard draws a card from the development card deck
@@ -384,8 +458,40 @@ func (g *Game) ShouldQuit() bool {
 	return g.shouldQuit
 }
 
+func (g *Game) Phase() Phase {
+	if len(g.phaseStack) == 0 {
+		return nil
+	}
+	return g.phaseStack[len(g.phaseStack)-1]
+}
+
 func (g *Game) SetPhase(phase Phase) {
-	g.phase = phase
+	if phase == nil {
+		g.phaseStack = nil
+		return
+	}
+	g.phaseStack = []Phase{phase}
+}
+
+func (g *Game) SpectatorPhase(playerID int) (SpectatorPhase, bool) {
+	stack := g.spectatorPhaseStacks[playerID]
+	if len(stack) == 0 {
+		return nil, false
+	}
+	return stack[len(stack)-1], true
+}
+
+func (g *Game) SetSpectatorPhase(playerID int, phase SpectatorPhase) {
+	if phase == nil {
+		if g.spectatorPhaseStacks != nil {
+			delete(g.spectatorPhaseStacks, playerID)
+		}
+		return
+	}
+	if g.spectatorPhaseStacks == nil {
+		g.spectatorPhaseStacks = make(map[int][]SpectatorPhase)
+	}
+	g.spectatorPhaseStacks[playerID] = []SpectatorPhase{phase}
 }
 
 // AddTradeOffer creates and adds a new trade offer to the game

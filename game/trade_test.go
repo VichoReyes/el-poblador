@@ -1,15 +1,18 @@
 package game
 
 import (
-	"git.sr.ht/~vicho/el_poblador/board"
 	"testing"
+
+	"git.sr.ht/~vicho/el_poblador/board"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 )
 
 func TestBankTrade(t *testing.T) {
 	game := &Game{}
 	game.Start([]string{"p1", "p2", "p3"})
 
-	game.phase = PhaseIdle(game)
+	game.SetPhase(PhaseIdle(game))
 
 	player := &game.Players[game.PlayerTurn]
 	for i := 0; i < 4; i++ {
@@ -26,12 +29,12 @@ func TestBankTrade(t *testing.T) {
 		t.Fatalf("Expected 0 ore, got %d", player.Resources[board.ResourceOre])
 	}
 
-	game.phase.MoveCursor("down")
+	game.Phase().MoveCursor("down")
 	game.ConfirmAction(nil)
 
-	tradePhase, ok := game.phase.(*phaseTradeOffer)
+	tradePhase, ok := game.Phase().(*phaseTradeOffer)
 	if !ok {
-		t.Fatalf("Should be in trade offer phase, got: %T", game.phase)
+		t.Fatalf("Should be in trade offer phase, got: %T", game.Phase())
 	}
 
 	brickIndex := -1
@@ -43,11 +46,11 @@ func TestBankTrade(t *testing.T) {
 	}
 
 	for i := 0; i < brickIndex; i++ {
-		game.phase.MoveCursor("down")
+		game.Phase().MoveCursor("down")
 	}
 
 	for i := 0; i < 4; i++ {
-		game.phase.MoveCursor("right")
+		game.Phase().MoveCursor("right")
 	}
 
 	if tradePhase.offer[board.ResourceBrick] != 4 {
@@ -56,9 +59,9 @@ func TestBankTrade(t *testing.T) {
 
 	game.ConfirmAction(nil)
 
-	receivePhase, ok := game.phase.(*phaseTradeSelectReceive)
+	receivePhase, ok := game.Phase().(*phaseTradeSelectReceive)
 	if !ok {
-		t.Fatalf("Should be in receive phase, got: %T", game.phase)
+		t.Fatalf("Should be in receive phase, got: %T", game.Phase())
 	}
 
 	oreIndex := -1
@@ -70,10 +73,10 @@ func TestBankTrade(t *testing.T) {
 	}
 
 	for i := 0; i < oreIndex; i++ {
-		game.phase.MoveCursor("down")
+		game.Phase().MoveCursor("down")
 	}
 
-	game.phase.MoveCursor("right")
+	game.Phase().MoveCursor("right")
 
 	if receivePhase.request[board.ResourceOre] != 1 {
 		t.Fatalf("Expected request of 1 ore, got %d", receivePhase.request[board.ResourceOre])
@@ -81,8 +84,8 @@ func TestBankTrade(t *testing.T) {
 
 	game.ConfirmAction(nil)
 
-	if _, ok := game.phase.(*phaseIdle); !ok {
-		t.Fatalf("Should be in idle phase after trade, got: %T", game.phase)
+	if _, ok := game.Phase().(*phaseIdle); !ok {
+		t.Fatalf("Should be in idle phase after trade, got: %T", game.Phase())
 	}
 
 	if player.Resources[board.ResourceBrick] != 0 {
@@ -100,7 +103,7 @@ func TestBankTradeInvalidOffer(t *testing.T) {
 	game := &Game{}
 	game.Start([]string{"p1", "p2", "p3"})
 
-	game.phase = PhaseIdle(game)
+	game.SetPhase(PhaseIdle(game))
 
 	player := &game.Players[game.PlayerTurn]
 	for i := 0; i < 4; i++ {
@@ -110,11 +113,11 @@ func TestBankTradeInvalidOffer(t *testing.T) {
 		player.AddResource(board.ResourceWheat)
 	}
 
-	game.phase.MoveCursor("down")
+	game.Phase().MoveCursor("down")
 	game.ConfirmAction(nil)
 
-	if _, ok := game.phase.(*phaseTradeOffer); !ok {
-		t.Fatalf("Should be in offer phase, got: %T", game.phase)
+	if _, ok := game.Phase().(*phaseTradeOffer); !ok {
+		t.Fatalf("Should be in offer phase, got: %T", game.Phase())
 	}
 
 	brickIndex := -1
@@ -126,17 +129,17 @@ func TestBankTradeInvalidOffer(t *testing.T) {
 	}
 
 	for i := 0; i < brickIndex; i++ {
-		game.phase.MoveCursor("down")
+		game.Phase().MoveCursor("down")
 	}
 
 	for i := 0; i < 3; i++ {
-		game.phase.MoveCursor("right")
+		game.Phase().MoveCursor("right")
 	}
 
 	game.ConfirmAction(nil)
 
-	if _, ok := game.phase.(*phaseTradeSelectReceive); !ok {
-		t.Fatalf("Should be in receive phase, got: %T", game.phase)
+	if _, ok := game.Phase().(*phaseTradeSelectReceive); !ok {
+		t.Fatalf("Should be in receive phase, got: %T", game.Phase())
 	}
 
 	sheepIndex := -1
@@ -148,17 +151,17 @@ func TestBankTradeInvalidOffer(t *testing.T) {
 	}
 
 	for i := 0; i < sheepIndex; i++ {
-		game.phase.MoveCursor("down")
+		game.Phase().MoveCursor("down")
 	}
 
 	for i := 0; i < 2; i++ {
-		game.phase.MoveCursor("right")
+		game.Phase().MoveCursor("right")
 	}
 
 	game.ConfirmAction(nil)
 
-	if _, ok := game.phase.(*phaseIdle); !ok {
-		t.Fatalf("Should be in idle phase with error, got: %T", game.phase)
+	if _, ok := game.Phase().(*phaseIdle); !ok {
+		t.Fatalf("Should be in idle phase with error, got: %T", game.Phase())
 	}
 
 	if player.Resources[board.ResourceBrick] != 4 {
@@ -170,22 +173,22 @@ func TestBankTradeCancel(t *testing.T) {
 	game := &Game{}
 	game.Start([]string{"p1", "p2", "p3"})
 
-	game.phase = PhaseIdle(game)
+	game.SetPhase(PhaseIdle(game))
 
 	player := &game.Players[game.PlayerTurn]
 	for i := 0; i < 4; i++ {
 		player.AddResource(board.ResourceBrick)
 	}
 
-	game.phase.MoveCursor("down")
+	game.Phase().MoveCursor("down")
 	game.ConfirmAction(nil)
 
-	tradePhase, ok := game.phase.(*phaseTradeOffer)
-	if !ok {
-		t.Fatalf("Should be in offer phase, got: %T", game.phase)
+	if _, ok := game.Phase().(*phaseTradeOffer); !ok {
+		t.Fatalf("Should be in offer phase, got: %T", game.Phase())
 	}
 
-	canceledPhase := tradePhase.Cancel()
+	game.CancelAction(nil)
+	canceledPhase := game.Phase()
 
 	if _, ok := canceledPhase.(*phaseIdle); !ok {
 		t.Fatalf("Should be in idle phase after cancel, got: %T", canceledPhase)
@@ -200,14 +203,14 @@ func TestBankTradeCancelFromReceivePhase(t *testing.T) {
 	game := &Game{}
 	game.Start([]string{"p1", "p2", "p3"})
 
-	game.phase = PhaseIdle(game)
+	game.SetPhase(PhaseIdle(game))
 
 	player := &game.Players[game.PlayerTurn]
 	for i := 0; i < 4; i++ {
 		player.AddResource(board.ResourceBrick)
 	}
 
-	game.phase.MoveCursor("down")
+	game.Phase().MoveCursor("down")
 	game.ConfirmAction(nil)
 
 	brickIndex := -1
@@ -219,21 +222,21 @@ func TestBankTradeCancelFromReceivePhase(t *testing.T) {
 	}
 
 	for i := 0; i < brickIndex; i++ {
-		game.phase.MoveCursor("down")
+		game.Phase().MoveCursor("down")
 	}
 
 	for i := 0; i < 4; i++ {
-		game.phase.MoveCursor("right")
+		game.Phase().MoveCursor("right")
 	}
 
 	game.ConfirmAction(nil)
 
-	receivePhase, ok := game.phase.(*phaseTradeSelectReceive)
-	if !ok {
-		t.Fatalf("Should be in receive phase, got: %T", game.phase)
+	if _, ok := game.Phase().(*phaseTradeSelectReceive); !ok {
+		t.Fatalf("Should be in receive phase, got: %T", game.Phase())
 	}
 
-	canceledPhase := receivePhase.Cancel()
+	game.CancelAction(nil)
+	canceledPhase := game.Phase()
 
 	newTradePhase, ok := canceledPhase.(*phaseTradeOffer)
 	if !ok {
@@ -249,11 +252,40 @@ func TestBankTradeCancelFromReceivePhase(t *testing.T) {
 	}
 }
 
+func TestRenderForPool(t *testing.T) {
+	lipgloss.SetColorProfile(termenv.ANSI)
+
+	game := &Game{}
+	game.Start([]string{"p1", "p2", "p3"})
+
+	p2 := &game.Players[1]
+	for range 3 {
+		p2.AddResource(board.ResourceBrick)
+	}
+	game.PlayerTurn = 0
+
+	type offerMap map[board.ResourceType]int
+	p2Offering := offerMap{board.ResourceBrick: 1}
+	p2Receive0 := offerMap{board.ResourceWood: 1}
+	if ok := game.AddTradeOffer(1, -1, p2Offering, p2Receive0); !ok {
+		t.Fatal("should've been valid offer")
+	}
+	offer0 := game.TradeOffers[0].RenderForPool(game, lipgloss.NewStyle())
+	offer0Strike := game.TradeOffers[0].RenderForPool(game, strikethroughStyle())
+	if offer0 == offer0Strike {
+		t.Errorf("strikethrough should change the string, but both are: %q", offer0)
+	}
+	if lipgloss.Width(offer0) != lipgloss.Width(offer0Strike) {
+		t.Errorf("strikethrough should not change width: %d vs %d",
+			lipgloss.Width(offer0), lipgloss.Width(offer0Strike))
+	}
+}
+
 func TestPlayerToPlayerTradeCreation(t *testing.T) {
 	game := &Game{}
 	game.Start([]string{"p1", "p2", "p3"})
 
-	game.phase = PhaseIdle(game)
+	game.SetPhase(PhaseIdle(game))
 
 	player := &game.Players[game.PlayerTurn]
 	for i := 0; i < 4; i++ {
@@ -263,7 +295,7 @@ func TestPlayerToPlayerTradeCreation(t *testing.T) {
 		player.AddResource(board.ResourceSheep)
 	}
 
-	game.phase.MoveCursor("down")
+	game.Phase().MoveCursor("down")
 	game.ConfirmAction(nil)
 
 	woodIndex := -1
@@ -275,17 +307,17 @@ func TestPlayerToPlayerTradeCreation(t *testing.T) {
 	}
 
 	for i := 0; i < woodIndex; i++ {
-		game.phase.MoveCursor("down")
+		game.Phase().MoveCursor("down")
 	}
 
 	for i := 0; i < 4; i++ {
-		game.phase.MoveCursor("right")
+		game.Phase().MoveCursor("right")
 	}
 
 	game.ConfirmAction(nil)
 
-	if _, ok := game.phase.(*phaseTradeSelectReceive); !ok {
-		t.Fatalf("Should be in receive phase, got: %T", game.phase)
+	if _, ok := game.Phase().(*phaseTradeSelectReceive); !ok {
+		t.Fatalf("Should be in receive phase, got: %T", game.Phase())
 	}
 
 	sheepIndex := -1
@@ -297,18 +329,18 @@ func TestPlayerToPlayerTradeCreation(t *testing.T) {
 	}
 
 	for i := 0; i < sheepIndex; i++ {
-		game.phase.MoveCursor("down")
+		game.Phase().MoveCursor("down")
 	}
 
 	for i := 0; i < 2; i++ {
-		game.phase.MoveCursor("right")
+		game.Phase().MoveCursor("right")
 	}
 
 	game.ConfirmAction(nil)
 
-	idlePhase, ok := game.phase.(*phaseIdle)
+	idlePhase, ok := game.Phase().(*phaseIdle)
 	if !ok {
-		t.Fatalf("Should be in idle phase, got: %T", game.phase)
+		t.Fatalf("Should be in idle phase, got: %T", game.Phase())
 	}
 
 	if idlePhase.notification != "Trade offer created!" {
@@ -862,7 +894,7 @@ func TestPlayerToPlayerTradeFlow(t *testing.T) {
 	game := &Game{}
 	game.Start([]string{"p1", "p2", "p3"})
 
-	game.phase = PhaseIdle(game)
+	game.SetPhase(PhaseIdle(game))
 
 	// Give player 0 resources
 	player := &game.Players[game.PlayerTurn]
@@ -870,12 +902,12 @@ func TestPlayerToPlayerTradeFlow(t *testing.T) {
 	player.Resources[board.ResourceBrick] = 2
 
 	// Navigate to trade phase
-	game.phase.MoveCursor("down")
+	game.Phase().MoveCursor("down")
 	game.ConfirmAction(nil)
 
-	tradePhase, ok := game.phase.(*phaseTradeOffer)
+	tradePhase, ok := game.Phase().(*phaseTradeOffer)
 	if !ok {
-		t.Fatalf("Should be in trade offer phase, got: %T", game.phase)
+		t.Fatalf("Should be in trade offer phase, got: %T", game.Phase())
 	}
 
 	// Select Wood
@@ -887,12 +919,12 @@ func TestPlayerToPlayerTradeFlow(t *testing.T) {
 		}
 	}
 	for i := 0; i < woodIndex; i++ {
-		game.phase.MoveCursor("down")
+		game.Phase().MoveCursor("down")
 	}
 
 	// Offer 2 wood
 	for i := 0; i < 2; i++ {
-		game.phase.MoveCursor("right")
+		game.Phase().MoveCursor("right")
 	}
 
 	if tradePhase.offer[board.ResourceWood] != 2 {
@@ -902,9 +934,9 @@ func TestPlayerToPlayerTradeFlow(t *testing.T) {
 	// Confirm offer
 	game.ConfirmAction(nil)
 
-	receivePhase, ok := game.phase.(*phaseTradeSelectReceive)
+	receivePhase, ok := game.Phase().(*phaseTradeSelectReceive)
 	if !ok {
-		t.Fatalf("Should be in receive phase, got: %T", game.phase)
+		t.Fatalf("Should be in receive phase, got: %T", game.Phase())
 	}
 
 	// Select Wheat
@@ -916,11 +948,11 @@ func TestPlayerToPlayerTradeFlow(t *testing.T) {
 		}
 	}
 	for i := 0; i < wheatIndex; i++ {
-		game.phase.MoveCursor("down")
+		game.Phase().MoveCursor("down")
 	}
 
 	// Request 1 wheat
-	game.phase.MoveCursor("right")
+	game.Phase().MoveCursor("right")
 
 	if receivePhase.request[board.ResourceWheat] != 1 {
 		t.Fatalf("Expected request of 1 wheat, got %d", receivePhase.request[board.ResourceWheat])
@@ -930,8 +962,8 @@ func TestPlayerToPlayerTradeFlow(t *testing.T) {
 	game.ConfirmAction(nil)
 
 	// Should be back in idle phase
-	if _, ok := game.phase.(*phaseIdle); !ok {
-		t.Fatalf("Should be in idle phase after creating offer, got: %T", game.phase)
+	if _, ok := game.Phase().(*phaseIdle); !ok {
+		t.Fatalf("Should be in idle phase after creating offer, got: %T", game.Phase())
 	}
 
 	// Verify trade offer was created

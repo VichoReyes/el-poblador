@@ -41,11 +41,11 @@ func (p *phasePlaceRobber) HelpText() string {
 	return "Select a tile to place the robber on"
 }
 
-func (p *phasePlaceRobber) Confirm() Phase {
+func (p *phasePlaceRobber) ConfirmTurn() (Phase, EnterMode) {
 	// Check if trying to place robber on the same tile it's already on
 	if p.tileCoord == p.game.Board.GetRobber() {
 		p.invalid = "Robber cannot be moved to the same tile it's already on"
-		return p
+		return p, EnterReplace
 	}
 
 	playerIds := p.game.Board.PlaceRobber(p.tileCoord)
@@ -61,13 +61,13 @@ func (p *phasePlaceRobber) Confirm() Phase {
 		}
 	}
 	if len(stealablePlayers) == 0 { // no one to steal from? skip
-		return p.continuation
+		return p.continuation, EnterReset
 	}
 	return &phaseStealCard{
 		game:             p.game,
 		continuation:     p.continuation,
 		stealablePlayers: stealablePlayers,
-	}
+	}, EnterReset
 }
 
 type phaseStealCard struct {
@@ -95,7 +95,7 @@ func (p *phaseStealCard) HelpText() string {
 	return "Select a player to steal from"
 }
 
-func (p *phaseStealCard) Confirm() Phase {
+func (p *phaseStealCard) ConfirmTurn() (Phase, EnterMode) {
 	player := p.stealablePlayers[p.selected]
 	var resourcePool []board.ResourceType
 	for resType, count := range player.Resources {
@@ -111,7 +111,7 @@ func (p *phaseStealCard) Confirm() Phase {
 		currentPlayer := &p.game.Players[p.game.PlayerTurn]
 		p.game.LogAction(fmt.Sprintf("%s stole a card from %s", currentPlayer.RenderName(), player.RenderName()))
 	}
-	return p.continuation
+	return p.continuation, EnterReset
 }
 
 func (p *phaseStealCard) Menu() string {
@@ -124,4 +124,8 @@ func (p *phaseStealCard) Menu() string {
 		}
 	}
 	return strings.Join(paddedOptions, "\n")
+}
+
+func (p *phasePlaceRobber) Menu() string {
+	return "Select robber destination tile on the map"
 }

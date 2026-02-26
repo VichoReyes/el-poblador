@@ -16,13 +16,13 @@ func TestInitialFlow(t *testing.T) {
 			t.Fatalf("Wrong player turn. Expected %d, got %d. Iteration %d", expectedTurns[i], game.PlayerTurn, i)
 		}
 
-		if _, ok := game.phase.(*phaseInitialSettlements); !ok {
+		if _, ok := game.Phase().(*phaseInitialSettlements); !ok {
 			t.Fatalf("Phase is not initial settlements. Iteration %d", i)
 		}
 		game.MoveCursorToPlaceSettlement()
 
 		game.ConfirmAction(nil) // place settlement
-		if _, ok := game.phase.(*phaseInitialRoad); !ok {
+		if _, ok := game.Phase().(*phaseInitialRoad); !ok {
 			t.Fatalf("Phase is not initial road. Iteration %d", i)
 		}
 		game.ConfirmAction(nil) // place road
@@ -41,7 +41,7 @@ func TestInitialFlow(t *testing.T) {
 		t.Fatal("No resources found")
 	}
 
-	if _, ok := game.phase.(*phaseDiceRoll); !ok {
+	if _, ok := game.Phase().(*phaseDiceRoll); !ok {
 		t.Fatal("Phase should be dice roll after initial flow is complete")
 	}
 }
@@ -53,18 +53,18 @@ func TestPlaceSettlementOnExisting(t *testing.T) {
 	// Place the first settlement
 	game.ConfirmAction(nil)
 	// get placed settlement location
-	settlementLocation := game.phase.(*phaseInitialRoad).sourceCross
+	settlementLocation := game.Phase().(*phaseInitialRoad).sourceCross
 	// place the road
 	game.ConfirmAction(nil)
 
 	// Try to place another settlement in the same location
 	// move cursor to the same spot
-	game.phase.(*phaseInitialSettlements).cursorCross = settlementLocation
+	game.Phase().(*phaseInitialSettlements).cursorCross = settlementLocation
 	// now in the same spot, try to place another settlement
 	game.ConfirmAction(nil)
 
 	// after the second confirm, the phase should still be settlement placement
-	if _, ok := game.phase.(*phaseInitialSettlements); !ok {
+	if _, ok := game.Phase().(*phaseInitialSettlements); !ok {
 		t.Fatal("Should not be able to place a settlement on an existing one")
 	}
 }

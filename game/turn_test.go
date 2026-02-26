@@ -18,7 +18,7 @@ func TestBuildingPhase(t *testing.T) {
 	game.ConfirmAction(nil) // roll dice
 
 	// Handle both possible outcomes: idle phase (normal roll) or robber placement (rolled 7)
-	if robberPhase, ok := game.phase.(*phasePlaceRobber); ok {
+	if robberPhase, ok := game.Phase().(*phasePlaceRobber); ok {
 		// If a 7 was rolled, complete the robber placement to get back to idle
 		// Move robber to a different tile
 		robberPhase.tileCoord, _ = board.NewTileCoord(1, 2)
@@ -26,7 +26,7 @@ func TestBuildingPhase(t *testing.T) {
 		// This might go to steal phase if there are players adjacent to robber
 		// Keep confirming until we get back to idle
 		for i := 0; i < 10; i++ { // safety limit
-			if _, ok := game.phase.(*phaseIdle); ok {
+			if _, ok := game.Phase().(*phaseIdle); ok {
 				break
 			}
 			game.ConfirmAction(nil)
@@ -34,27 +34,27 @@ func TestBuildingPhase(t *testing.T) {
 	}
 
 	// Should be in idle phase now
-	if _, ok := game.phase.(*phaseIdle); !ok {
-		t.Fatalf("Should be in idle phase after dice roll and robber handling, got: %T", game.phase)
+	if _, ok := game.Phase().(*phaseIdle); !ok {
+		t.Fatalf("Should be in idle phase after dice roll and robber handling, got: %T", game.Phase())
 	}
 
 	// Select "Build" option (it's already the first option, so no need to move cursor)
 	game.ConfirmAction(nil)
 
 	// Should be in building phase now
-	if _, ok := game.phase.(*phaseBuilding); !ok {
+	if _, ok := game.Phase().(*phaseBuilding); !ok {
 		t.Fatal("Should be in building phase after selecting Build")
 	}
 
 	// Test cancel functionality
 	// Move cursor to "Cancel" (last option, index 4)
 	for i := 0; i < 4; i++ {
-		game.phase.MoveCursor("down")
+		game.Phase().MoveCursor("down")
 	}
 	game.ConfirmAction(nil)
 
 	// Should be back in idle phase
-	if _, ok := game.phase.(*phaseIdle); !ok {
+	if _, ok := game.Phase().(*phaseIdle); !ok {
 		t.Fatal("Should be back in idle phase after canceling")
 	}
 }
@@ -68,7 +68,7 @@ func TestRoadPurchase(t *testing.T) {
 	settlementCoord, _ := board.NewCrossCoord(2, 3)
 	game.Board.SetSettlement(settlementCoord, playerId)
 
-	game.phase = PhaseIdle(game)
+	game.SetPhase(PhaseIdle(game))
 
 	// Give the player enough resources to build a road
 	player := &game.Players[game.PlayerTurn]
@@ -79,17 +79,17 @@ func TestRoadPurchase(t *testing.T) {
 	game.ConfirmAction(nil)
 
 	// Should be in building phase now
-	if _, ok := game.phase.(*phaseBuilding); !ok {
-		t.Fatalf("Should be in building phase after selecting Build, got: %T", game.phase)
+	if _, ok := game.Phase().(*phaseBuilding); !ok {
+		t.Fatalf("Should be in building phase after selecting Build, got: %T", game.Phase())
 	}
 
 	// Select "Road" option (first option in building phase)
 	game.ConfirmAction(nil)
 
 	// Should be in road start phase
-	roadStartPhase, ok := game.phase.(*phaseRoadStart)
+	roadStartPhase, ok := game.Phase().(*phaseRoadStart)
 	if !ok {
-		t.Fatalf("Should be in road start phase after selecting Road, got: %T", game.phase)
+		t.Fatalf("Should be in road start phase after selecting Road, got: %T", game.Phase())
 	}
 
 	// Set cursor to the settlement position
@@ -99,9 +99,9 @@ func TestRoadPurchase(t *testing.T) {
 	game.ConfirmAction(nil)
 
 	// Should be in road end phase
-	roadEndPhase, ok := game.phase.(*phaseRoadEnd)
+	roadEndPhase, ok := game.Phase().(*phaseRoadEnd)
 	if !ok {
-		t.Fatalf("Should be in road end phase after confirming start, got: %T", game.phase)
+		t.Fatalf("Should be in road end phase after confirming start, got: %T", game.Phase())
 	}
 
 	// Find a valid neighbor for the road end
@@ -135,8 +135,8 @@ func TestRoadPurchase(t *testing.T) {
 	}
 
 	// BUG: This should be idle phase but currently returns to building phase
-	if _, ok := game.phase.(*phaseIdle); !ok {
-		t.Fatalf("Should be in idle phase after building road, got: %T", game.phase)
+	if _, ok := game.Phase().(*phaseIdle); !ok {
+		t.Fatalf("Should be in idle phase after building road, got: %T", game.Phase())
 	}
 }
 
@@ -159,7 +159,7 @@ func TestCityUpgradeFreesSettlement(t *testing.T) {
 		isFirstPair: true,
 	}
 
-	initialPhase.Confirm() // This places settlement on the board
+	initialPhase.ConfirmTurn() // This places settlement on the board
 
 	// BUG: Initial settlements should consume from the available pool
 	if player.SettlementsAvailable != initialSettlements-1 {
@@ -181,7 +181,7 @@ func TestCityUpgradeFreesSettlement(t *testing.T) {
 		cursorCross: settlementCoord,
 	}
 
-	cityPhase.Confirm() // This upgrades to city
+	cityPhase.ConfirmTurn() // This upgrades to city
 
 	// BUG: After upgrading to city, the settlement should be freed
 	// The settlement piece should be returned to the available pool

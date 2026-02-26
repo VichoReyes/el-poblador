@@ -65,13 +65,14 @@ func TestActionLogDevelopmentCardPurchase(t *testing.T) {
 	}
 
 	// Simulate buying through the building phase
-	game.phase = PhaseBuilding(game, PhaseIdle(game))
-	buildPhase := game.phase.(*phaseBuilding)
+	game.SetPhase(PhaseBuilding(game))
+	buildPhase := game.Phase().(*phaseBuilding)
 	buildPhase.selected = 3 // Development Card option
 
 	// Execute the purchase
 	originalDevCardCount := len(firstPlayer.HiddenDevCards)
-	game.phase = game.phase.Confirm()
+	next, _ := game.Phase().ConfirmTurn()
+	game.SetPhase(next)
 	newDevCardCount := len(firstPlayer.HiddenDevCards)
 
 	// Verify the purchase actually happened
@@ -128,12 +129,13 @@ func TestActionLogUsesRenderNameInsteadOfPlainName(t *testing.T) {
 	firstPlayer.AddResource(board.ResourceSheep)
 
 	// Simulate buying through the building phase
-	game.phase = PhaseBuilding(game, PhaseIdle(game))
-	buildPhase := game.phase.(*phaseBuilding)
+	game.SetPhase(PhaseBuilding(game))
+	buildPhase := game.Phase().(*phaseBuilding)
 	buildPhase.selected = 3 // Development Card option
 
 	// Execute the purchase
-	game.phase = game.phase.Confirm()
+	next, _ := game.Phase().ConfirmTurn()
+	game.SetPhase(next)
 
 	// Check that the action was logged
 	if len(game.ActionLog) == 0 {

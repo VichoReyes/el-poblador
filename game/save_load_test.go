@@ -13,7 +13,7 @@ func TestSaveLoadRoundtrip(t *testing.T) {
 	game.Start([]string{"Alice", "Bob", "Charlie"})
 
 	// Advance game state
-	game.phase = PhaseDiceRoll(game)
+	game.SetPhase(PhaseDiceRoll(game))
 	game.LogAction("Test action")
 
 	// Save to file
@@ -43,7 +43,7 @@ func TestSaveLoadRoundtrip(t *testing.T) {
 	}
 
 	// Restore phase
-	loadedGame.phase = PhaseDiceRoll(&loadedGame)
+	loadedGame.SetPhase(PhaseDiceRoll(&loadedGame))
 
 	// Verify state
 	if len(loadedGame.Players) != 3 {
@@ -66,7 +66,7 @@ func TestSaveLoadRoundtrip(t *testing.T) {
 		t.Error("Expected action log to be preserved")
 	}
 
-	if loadedGame.phase == nil {
+	if loadedGame.Phase() == nil {
 		t.Error("Phase should be restored to PhaseDiceRoll")
 	}
 }

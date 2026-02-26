@@ -21,13 +21,12 @@ func TestTurnHolderAndSpectatorTrading(t *testing.T) {
 
 	// Set turn to player 0 (Alice)
 	g.PlayerTurn = 0
-	g.phase = PhaseIdle(g)
+	g.SetPhase(PhaseIdle(g))
 
 	// Initialize spectator phases (simulate dice roll)
-	g.spectatorPhases = make(map[int]SpectatorPhase)
 	for i := range g.Players {
 		if i != g.PlayerTurn {
-			g.spectatorPhases[i] = PhaseSpectatorIdle(g, i)
+			g.SetSpectatorPhase(i, PhaseSpectatorIdle(g, i))
 		}
 	}
 
@@ -35,11 +34,12 @@ func TestTurnHolderAndSpectatorTrading(t *testing.T) {
 	offerPhase := PhaseTradeOffer(g).(*phaseTradeOffer)
 	offerPhase.offer[board.ResourceWood] = 2
 
-	receivePhase := offerPhase.Confirm().(*phaseTradeSelectReceive)
+	nextPhase, _ := offerPhase.ConfirmTurn()
+	receivePhase := nextPhase.(*phaseTradeSelectReceive)
 	receivePhase.request[board.ResourceBrick] = 2
 
 	// Confirm the trade offer - this should create it in the pool
-	receivePhase.Confirm()
+	_, _ = receivePhase.ConfirmTurn()
 
 	// Verify the offer was created
 	if len(g.TradeOffers) != 1 {
@@ -58,14 +58,18 @@ func TestTurnHolderAndSpectatorTrading(t *testing.T) {
 	}
 
 	// Spectator (Bob, player 1) views and accepts the offer
-	spectatorPhase := g.spectatorPhases[1]
+	spectatorPhase, ok := g.SpectatorPhase(1)
+	if !ok {
+		t.Fatal("Expected spectator phase for player 1")
+	}
 
 	// Navigate to "View Trade Pool"
 	spectatorIdle := spectatorPhase.(*phaseSpectatorIdle)
 	spectatorIdle.MoveCursor("down") // Move to "View Trade Pool"
 
 	// Confirm to enter trade pool
-	tradePoolPhase := spectatorIdle.Confirm(g).(*phaseSpectatorTradePool)
+	nextSpectatorPhase, _ := spectatorIdle.ConfirmSpectator()
+	tradePoolPhase := nextSpectatorPhase.(*phaseTradePool)
 
 	// Verify we can see the offer (snapshot includes offer + Update button nil)
 	if len(tradePoolPhase.offersSnapshot) != 2 {
@@ -89,7 +93,7 @@ func TestTurnHolderAndSpectatorTrading(t *testing.T) {
 	bobBrickBefore := g.Players[1].Resources[board.ResourceBrick]
 
 	// Accept the offer (it's already selected at index 0)
-	tradePoolPhase.Confirm(g)
+	_, _ = tradePoolPhase.ConfirmSpectator()
 
 	// Verify resources were transferred
 	aliceWoodAfter := g.Players[0].Resources[board.ResourceWood]
@@ -134,13 +138,12 @@ func TestTradePoolStaysOpenOnFailedAccept(t *testing.T) {
 
 	// Set turn to player 0 (Alice)
 	g.PlayerTurn = 0
-	g.phase = PhaseIdle(g)
+	g.SetPhase(PhaseIdle(g))
 
 	// Initialize spectator phases
-	g.spectatorPhases = make(map[int]SpectatorPhase)
 	for i := range g.Players {
 		if i != g.PlayerTurn {
-			g.spectatorPhases[i] = PhaseSpectatorIdle(g, i)
+			g.SetSpectatorPhase(i, PhaseSpectatorIdle(g, i))
 		}
 	}
 
@@ -156,18 +159,22 @@ func TestTradePoolStaysOpenOnFailedAccept(t *testing.T) {
 	}
 
 	// Bob tries to accept the offer but doesn't have the resources
-	spectatorPhase := g.spectatorPhases[1]
+	spectatorPhase, ok := g.SpectatorPhase(1)
+	if !ok {
+		t.Fatal("Expected spectator phase for player 1")
+	}
 	spectatorIdle := spectatorPhase.(*phaseSpectatorIdle)
 	spectatorIdle.MoveCursor("down") // Move to "View Trade Pool"
 
 	// Enter trade pool
-	tradePoolPhase := spectatorIdle.Confirm(g).(*phaseSpectatorTradePool)
+	nextSpectatorPhase, _ := spectatorIdle.ConfirmSpectator()
+	tradePoolPhase := nextSpectatorPhase.(*phaseTradePool)
 
 	// Try to confirm the offer (Bob doesn't have 2 brick)
-	resultPhase := tradePoolPhase.Confirm(g)
+	resultPhase, _ := tradePoolPhase.ConfirmSpectator()
 
 	// Verify Bob stays in the trade pool phase (not returned to idle)
-	if _, ok := resultPhase.(*phaseSpectatorTradePool); !ok {
+	if _, ok := resultPhase.(*phaseTradePool); !ok {
 		t.Errorf("Expected to stay in trade pool phase, got %T", resultPhase)
 	}
 
@@ -196,13 +203,12 @@ func TestSpectatorRetractsOwnOffer(t *testing.T) {
 
 	// Set turn to player 0 (Alice)
 	g.PlayerTurn = 0
-	g.phase = PhaseIdle(g)
+	g.SetPhase(PhaseIdle(g))
 
 	// Initialize spectator phases
-	g.spectatorPhases = make(map[int]SpectatorPhase)
 	for i := range g.Players {
 		if i != g.PlayerTurn {
-			g.spectatorPhases[i] = PhaseSpectatorIdle(g, i)
+			g.SetSpectatorPhase(i, PhaseSpectatorIdle(g, i))
 		}
 	}
 
@@ -226,12 +232,16 @@ func TestSpectatorRetractsOwnOffer(t *testing.T) {
 	}
 
 	// Bob navigates to trade pool
-	spectatorPhase := g.spectatorPhases[1]
+	spectatorPhase, ok := g.SpectatorPhase(1)
+	if !ok {
+		t.Fatal("Expected spectator phase for player 1")
+	}
 	spectatorIdle := spectatorPhase.(*phaseSpectatorIdle)
 	spectatorIdle.MoveCursor("down") // Move to "View Trade Pool"
 
 	// Enter trade pool
-	tradePoolPhase := spectatorIdle.Confirm(g).(*phaseSpectatorTradePool)
+	nextSpectatorPhase, _ := spectatorIdle.ConfirmSpectator()
+	tradePoolPhase := nextSpectatorPhase.(*phaseTradePool)
 
 	// Verify Bob sees his own offer
 	if len(tradePoolPhase.offersSnapshot) != 2 { // offer + Update button
@@ -245,10 +255,10 @@ func TestSpectatorRetractsOwnOffer(t *testing.T) {
 	}
 
 	// Bob confirms to retract his own offer (it's already selected at index 0)
-	resultPhase := tradePoolPhase.Confirm(g)
+	resultPhase, _ := tradePoolPhase.ConfirmSpectator()
 
 	// Verify Bob stays in trade pool after retracting
-	if _, ok := resultPhase.(*phaseSpectatorTradePool); !ok {
+	if _, ok := resultPhase.(*phaseTradePool); !ok {
 		t.Errorf("Expected to stay in trade pool phase, got %T", resultPhase)
 	}
 
@@ -269,7 +279,7 @@ func TestTurnHolderRetractsOwnOffer(t *testing.T) {
 
 	// Set turn to player 0 (Alice)
 	g.PlayerTurn = 0
-	g.phase = PhaseIdle(g)
+	g.SetPhase(PhaseIdle(g))
 
 	// Alice creates a trade offer: 2 wood for 2 brick
 	success := g.AddTradeOffer(0, -1, map[board.ResourceType]int{
@@ -291,12 +301,13 @@ func TestTurnHolderRetractsOwnOffer(t *testing.T) {
 	}
 
 	// Alice navigates to "Check Trade Offers" in idle phase
-	idlePhase := g.phase.(*phaseIdle)
+	idlePhase := g.Phase().(*phaseIdle)
 	idlePhase.MoveCursor("down") // Move from "Build" to "Make Trade Offer"
 	idlePhase.MoveCursor("down") // Move to "Check Trade Offers"
 
 	// Enter trade pool
-	tradePoolPhase := idlePhase.Confirm().(*phaseTradePool)
+	nextPhase, _ := idlePhase.ConfirmTurn()
+	tradePoolPhase := nextPhase.(*phaseTradePool)
 
 	// Verify Alice sees her own offer
 	if len(tradePoolPhase.offersSnapshot) != 2 { // offer + Update button
@@ -310,7 +321,7 @@ func TestTurnHolderRetractsOwnOffer(t *testing.T) {
 	}
 
 	// Alice confirms to retract her own offer (it's already selected at index 0)
-	resultPhase := tradePoolPhase.Confirm()
+	resultPhase, _ := tradePoolPhase.ConfirmTurn()
 
 	// Verify Alice stays in trade pool after retracting
 	if _, ok := resultPhase.(*phaseTradePool); !ok {

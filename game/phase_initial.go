@@ -37,17 +37,17 @@ func PhaseInitialSettlements(game *Game, isFirstPair bool) Phase {
 	return &phaseInitialSettlements{game: game, cursorCross: cursorCross, isFirstPair: isFirstPair}
 }
 
-func (p *phaseInitialSettlements) Confirm() Phase {
+func (p *phaseInitialSettlements) ConfirmTurn() (Phase, EnterMode) {
 
 	player := &p.game.Players[p.game.PlayerTurn]
 
 	if player.SettlementsAvailable <= 0 {
 		p.game.LogAction(fmt.Sprintf("Player %s has no settlements available during initial phase! Skipping...", player.RenderName()))
-		return nextInitialPhase(p.game, p.isFirstPair)
+		return nextInitialPhase(p.game, p.isFirstPair), EnterReset
 	}
 
 	if !p.game.Board.SetSettlement(p.cursorCross, p.game.PlayerTurn) {
-		return p
+		return p, EnterReplace
 	}
 
 	if !p.isFirstPair {
@@ -84,10 +84,10 @@ func (p *phaseInitialSettlements) Confirm() Phase {
 
 	// Check for game end after building initial settlement (unlikely but for completeness)
 	if winner := p.game.CheckGameEnd(); winner != nil {
-		return PhaseGameEnd(p.game, winner)
+		return PhaseGameEnd(p.game, winner), EnterReset
 	}
 
-	return PhaseInitialRoad(p.game, p.cursorCross, p.isFirstPair)
+	return PhaseInitialRoad(p.game, p.cursorCross, p.isFirstPair), EnterReset
 }
 
 func (p *phaseInitialSettlements) HelpText() string {
@@ -112,6 +112,10 @@ func (p *phaseInitialSettlements) MoveCursor(direction string) {
 	p.cursorCross = dest
 }
 
+func (p *phaseInitialSettlements) Menu() string {
+	return "Select initial settlement location on the map"
+}
+
 type phaseInitialRoad struct {
 	game        *Game
 	sourceCross board.CrossCoord
@@ -128,14 +132,10 @@ func PhaseInitialRoad(game *Game, sourceCross board.CrossCoord, isFirstPair bool
 	}
 }
 
-func (p *phaseInitialRoad) Confirm() Phase {
+func (p *phaseInitialRoad) ConfirmTurn() (Phase, EnterMode) {
 	roadCoord := board.NewPathCoord(p.sourceCross, p.cursorCross)
 	p.game.Board.SetRoad(roadCoord, p.game.PlayerTurn)
-	return nextInitialPhase(p.game, p.isFirstPair)
-}
-
-func (p *phaseInitialRoad) Cancel() Phase {
-	return PhaseInitialSettlements(p.game, p.isFirstPair)
+	return nextInitialPhase(p.game, p.isFirstPair), EnterReset
 }
 
 func (p *phaseInitialRoad) HelpText() string {
@@ -166,4 +166,8 @@ func (p *phaseInitialRoad) MoveCursor(direction string) {
 	if ok {
 		p.cursorCross = dest
 	}
+}
+
+func (p *phaseInitialRoad) Menu() string {
+	return "Select initial road direction on the map"
 }

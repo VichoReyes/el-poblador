@@ -2,8 +2,10 @@ package game
 
 import (
 	"fmt"
-	"git.sr.ht/~vicho/el_poblador/board"
 	"strings"
+
+	"git.sr.ht/~vicho/el_poblador/board"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Trading System
@@ -34,18 +36,34 @@ import (
 //
 // Design Notes:
 //   - phaseTradeOffer has no previousPhase (always returns to phaseIdle)
-//   - phaseTradeSelectReceive keeps reference to offer phase for cancel preservation
 //   - Validation is deferred until complete trade is known (offer + request)
 //   - Trade type detection happens in isBankTrade, isHarborTrade (future), etc.
 //   - Both phases implement PhaseCancelable for Esc key handling
 
 type phaseTradeOffer struct {
 	game     *Game
+	playerID *int // nil = use game.PlayerTurn (turn holder), non-nil = spectator
 	offer    map[board.ResourceType]int
 	selected int
 }
 
+// getPlayerID returns the player ID for this phase
+func (p *phaseTradeOffer) getPlayerID() int {
+	if p.playerID != nil {
+		return *p.playerID
+	}
+	return p.game.PlayerTurn
+}
+
 func PhaseTradeOffer(game *Game) Phase {
+	return newPhaseTradeOffer(game, nil)
+}
+
+func PhaseTradeOfferForPlayer(game *Game, playerID int) *phaseTradeOffer {
+	return newPhaseTradeOffer(game, &playerID)
+}
+
+func newPhaseTradeOffer(game *Game, playerID *int) *phaseTradeOffer {
 	offer := make(map[board.ResourceType]int)
 	for _, resourceType := range board.RESOURCE_TYPES {
 		offer[resourceType] = 0
@@ -53,6 +71,7 @@ func PhaseTradeOffer(game *Game) Phase {
 
 	return &phaseTradeOffer{
 		game:     game,
+		playerID: playerID,
 		offer:    offer,
 		selected: 0,
 	}
@@ -79,7 +98,7 @@ func (p *phaseTradeOffer) MoveCursor(direction string) {
 		}
 	case "right":
 		resourceType := board.RESOURCE_TYPES[p.selected]
-		player := &p.game.Players[p.game.PlayerTurn]
+		player := &p.game.Players[p.getPlayerID()]
 		maxAvailable := player.Resources[resourceType]
 		if p.offer[resourceType] < maxAvailable {
 			p.offer[resourceType]++
@@ -87,19 +106,30 @@ func (p *phaseTradeOffer) MoveCursor(direction string) {
 	}
 }
 
-func (p *phaseTradeOffer) Confirm() Phase {
+func (p *phaseTradeOffer) confirm() *phaseTradeSelectReceive {
 	totalOffered := 0
 	for _, amount := range p.offer {
 		totalOffered += amount
 	}
 	if totalOffered == 0 {
-		return p
+		return nil
 	}
-	return PhaseTradeSelectReceive(p.game, p.offer, p)
+	return newPhaseTradeSelectReceive(p.game, p.playerID, p.offer)
 }
 
-func (p *phaseTradeOffer) Cancel() Phase {
-	return PhaseIdle(p.game)
+func (p *phaseTradeOffer) ConfirmTurn() (Phase, EnterMode) {
+	if next := p.confirm(); next != nil {
+		return next, EnterPush
+	}
+	return p, EnterReplace
+}
+
+// SpectatorPhase implementation
+func (p *phaseTradeOffer) ConfirmSpectator() (SpectatorPhase, EnterMode) {
+	if next := p.confirm(); next != nil {
+		return next, EnterPush
+	}
+	return p, EnterReplace
 }
 
 func (p *phaseTradeOffer) BoardCursor() interface{} {
@@ -108,7 +138,7 @@ func (p *phaseTradeOffer) BoardCursor() interface{} {
 
 func (p *phaseTradeOffer) Menu() string {
 	var lines []string
-	player := &p.game.Players[p.game.PlayerTurn]
+	player := &p.game.Players[p.getPlayerID()]
 
 	lines = append(lines, "What do you want to offer?")
 	lines = append(lines, "")
@@ -134,25 +164,37 @@ func (p *phaseTradeOffer) HelpText() string {
 }
 
 type phaseTradeSelectReceive struct {
-	game          *Game
-	offer         map[board.ResourceType]int
-	request       map[board.ResourceType]int
-	previousPhase Phase
-	selected      int
+	game     *Game
+	playerID *int // nil = use game.PlayerTurn (turn holder), non-nil = spectator
+	offer    map[board.ResourceType]int
+	request  map[board.ResourceType]int
+	selected int
 }
 
-func PhaseTradeSelectReceive(game *Game, offer map[board.ResourceType]int, offerPhase Phase) Phase {
+// getPlayerID returns the player ID for this phase
+func (p *phaseTradeSelectReceive) getPlayerID() int {
+	if p.playerID != nil {
+		return *p.playerID
+	}
+	return p.game.PlayerTurn
+}
+
+func PhaseTradeSelectReceive(game *Game, offer map[board.ResourceType]int, _ Phase) Phase {
+	return newPhaseTradeSelectReceive(game, nil, offer)
+}
+
+func newPhaseTradeSelectReceive(game *Game, playerID *int, offer map[board.ResourceType]int) *phaseTradeSelectReceive {
 	request := make(map[board.ResourceType]int)
 	for _, resourceType := range board.RESOURCE_TYPES {
 		request[resourceType] = 0
 	}
 
 	return &phaseTradeSelectReceive{
-		game:          game,
-		offer:         offer,
-		request:       request,
-		previousPhase: offerPhase,
-		selected:      0,
+		game:     game,
+		playerID: playerID,
+		offer:    offer,
+		request:  request,
+		selected: 0,
 	}
 }
 
@@ -181,20 +223,29 @@ func (p *phaseTradeSelectReceive) MoveCursor(direction string) {
 	}
 }
 
-func (p *phaseTradeSelectReceive) Confirm() Phase {
+func (p *phaseTradeSelectReceive) ConfirmTurn() (Phase, EnterMode) {
 	totalRequested := 0
 	for _, amount := range p.request {
 		totalRequested += amount
 	}
 	if totalRequested == 0 {
-		return p
+		return p, EnterReplace
 	}
 
-	return p.validateAndExecuteTrade()
+	return p.validateAndExecuteTrade(), EnterReset
 }
 
-func (p *phaseTradeSelectReceive) Cancel() Phase {
-	return p.previousPhase
+// SpectatorPhase implementation
+func (p *phaseTradeSelectReceive) ConfirmSpectator() (SpectatorPhase, EnterMode) {
+	totalRequested := 0
+	for _, amount := range p.request {
+		totalRequested += amount
+	}
+	if totalRequested == 0 {
+		return p, EnterReplace
+	}
+
+	return p.validateAndExecuteSpectatorTrade(), EnterReset
 }
 
 func (p *phaseTradeSelectReceive) BoardCursor() interface{} {
@@ -203,7 +254,7 @@ func (p *phaseTradeSelectReceive) BoardCursor() interface{} {
 
 func (p *phaseTradeSelectReceive) Menu() string {
 	var lines []string
-	player := &p.game.Players[p.game.PlayerTurn]
+	player := &p.game.Players[p.getPlayerID()]
 
 	lines = append(lines, "What do you want to receive?")
 	lines = append(lines, "")
@@ -289,15 +340,45 @@ func (p *phaseTradeSelectReceive) isBankTrade() (string, board.ResourceType, boa
 	return "unknown", 0, 0
 }
 
+// validateAndExecuteSpectatorTrade handles trade execution for spectators (no bank trades)
+func (p *phaseTradeSelectReceive) validateAndExecuteSpectatorTrade() SpectatorPhase {
+	playerID := p.getPlayerID()
+	player := &p.game.Players[playerID]
+
+	// Spectators can only make player-to-player trades (not bank trades)
+	// Create a broadcast offer (TargetID = -1)
+	if p.game.AddTradeOffer(playerID, -1, p.offer, p.request) {
+		offer := TradeOffer{
+			Offering:   p.offer,
+			Requesting: p.request,
+		}
+		p.game.LogAction(fmt.Sprintf("%s offered to trade %s",
+			player.RenderName(), offer.String()))
+	}
+	return PhaseSpectatorIdle(p.game, playerID)
+}
+
 type phaseTradePool struct {
 	phaseWithOptions
 	offersSnapshot []*TradeOffer
 }
 
 // Phase for accepting offers made by non-turn holders.
-// Remember only the holder has phases.
 func PhaseTradePool(g *Game) Phase {
-	currentPlayer := g.PlayerTurn
+	return newPhaseTradePool(g, nil)
+}
+
+func PhaseTradePoolForPlayer(g *Game, playerID int) *phaseTradePool {
+	return newPhaseTradePool(g, &playerID)
+}
+
+func newPhaseTradePool(g *Game, playerID *int) *phaseTradePool {
+	var currentPlayer int
+	if playerID != nil {
+		currentPlayer = *playerID
+	} else {
+		currentPlayer = g.PlayerTurn
+	}
 	strikethrough := strikethroughStyle()
 
 	// Categorize offers into actionable and non-actionable
@@ -320,15 +401,15 @@ func PhaseTradePool(g *Game) Phase {
 	var options []string
 	var snapshot []*TradeOffer
 
-	// Add actionable offers (normal style)
+	// actionable offers
 	for _, offer := range actionable {
-		options = append(options, offer.RenderForPool(g))
+		options = append(options, offer.RenderForPool(g, lipgloss.NewStyle()))
 		snapshot = append(snapshot, offer)
 	}
 
-	// Add non-actionable offers (strikethrough)
+	// non-actionable offers (strikethrough)
 	for _, offer := range nonActionable {
-		options = append(options, strikethrough.Render(offer.RenderForPool(g)))
+		options = append(options, offer.RenderForPool(g, strikethrough))
 		snapshot = append(snapshot, offer)
 	}
 
@@ -338,46 +419,87 @@ func PhaseTradePool(g *Game) Phase {
 
 	return &phaseTradePool{
 		phaseWithOptions: phaseWithOptions{
-			game:    g,
-			options: options,
+			game:     g,
+			playerID: playerID,
+			options:  options,
 		},
 		offersSnapshot: snapshot,
 	}
 }
 
-func (p *phaseTradePool) Confirm() Phase {
+type poolConfirmOutcome int
+
+const (
+	poolConfirmRefresh poolConfirmOutcome = iota
+	poolConfirmStay
+	poolConfirmExit
+)
+
+func (p *phaseTradePool) confirmCommon() (poolConfirmOutcome, string) {
 	selected := p.selectedOffer()
 	if selected == nil {
 		// "Update" button was selected - refresh the phase
-		return PhaseTradePool(p.game)
+		return poolConfirmRefresh, ""
 	}
-	canTake := selected.canTake(p.game.PlayerTurn, p.game)
+	playerID := p.getPlayerID()
+	canTake := selected.canTake(playerID, p.game)
 
 	switch canTake {
 	case CanTakeOwnOffer:
 		// Confirming an own offer means retracting it
 		selected.Status = OfferIsRetracted
-		return p
+		return poolConfirmStay, "Offer retracted!"
 	case CanTakeIsAmbiguous:
 		// TODO: could open a counter-offer phase here
 		// For now, stay in trade pool
-		return p
+		return poolConfirmStay, ""
 	case CanTakeTrue:
 		// Execute the trade
 		offerer := &p.game.Players[selected.OffererID]
-		acceptor := &p.game.Players[p.game.PlayerTurn]
-		if selected.executeTrade(p.game.PlayerTurn, p.game) {
+		acceptor := &p.game.Players[playerID]
+		if selected.executeTrade(playerID, p.game) {
 			p.game.LogAction(fmt.Sprintf("%s traded %s with %s",
 				acceptor.RenderName(), selected.String(), offerer.RenderName()))
-			return PhaseIdleWithNotification(p.game, "Trade completed successfully!")
+			return poolConfirmExit, "Trade completed successfully!"
 		}
 		// Only reason the trade can fail at this point
 		p.game.LogAction(fmt.Sprintf("%s's offer was a bluff!", offerer.RenderName()))
 		selected.Status = OfferIsRetracted
-		return PhaseIdleWithNotification(p.game, "Trade didn't work!")
+		return poolConfirmExit, "Trade didn't work!"
 	default:
 		// Stay in trade pool for any other status
-		return p
+		return poolConfirmStay, ""
+	}
+}
+
+func (p *phaseTradePool) ConfirmTurn() (Phase, EnterMode) {
+	outcome, notification := p.confirmCommon()
+	switch outcome {
+	case poolConfirmRefresh:
+		// Update button - refresh
+		return PhaseTradePool(p.game), EnterReplace
+	case poolConfirmStay:
+		return p, EnterReplace
+	case poolConfirmExit:
+		return PhaseIdleWithNotification(p.game, notification), EnterReset
+	default:
+		panic("invalid pool confirm outcome")
+	}
+}
+
+// SpectatorPhase implementation
+func (p *phaseTradePool) ConfirmSpectator() (SpectatorPhase, EnterMode) {
+	outcome, _ := p.confirmCommon()
+	switch outcome {
+	case poolConfirmRefresh:
+		// Update button - refresh
+		return PhaseTradePoolForPlayer(p.game, p.getPlayerID()), EnterReplace
+	case poolConfirmStay:
+		return p, EnterReplace
+	case poolConfirmExit:
+		return PhaseSpectatorIdle(p.game, p.getPlayerID()), EnterReset
+	default:
+		panic("invalid pool confirm outcome")
 	}
 }
 
@@ -393,7 +515,7 @@ func (p *phaseTradePool) HelpText() string {
 	if selected == nil {
 		return "Refresh offer list"
 	}
-	switch selected.canTake(p.game.PlayerTurn, p.game) {
+	switch selected.canTake(p.getPlayerID(), p.game) {
 	case CanTakeExcludedPlayer:
 		return "Offer not for you"
 	case CanTakeIsAmbiguous:
@@ -409,8 +531,4 @@ func (p *phaseTradePool) HelpText() string {
 	default:
 		return "This should be impossible"
 	}
-}
-
-func (p *phaseTradePool) Cancel() Phase {
-	return PhaseIdle(p.game)
 }

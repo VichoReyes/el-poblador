@@ -3,64 +3,57 @@ package game
 import (
 	"fmt"
 	"git.sr.ht/~vicho/el_poblador/board"
-	"strings"
 )
 
 type phaseRoadStart struct {
-	game          *Game
-	cursorCross   board.CrossCoord
-	previousPhase Phase
-	invalid       string
-	isFree        bool
-	continuation  Phase
-	helpPrefix    string
+	game         *Game
+	cursorCross  board.CrossCoord
+	invalid      string
+	isFree       bool
+	continuation Phase
+	helpPrefix   string
 }
 
 // Phase for building a road by paying for it
-func PhaseRoadStart(game *Game, previousPhase Phase) Phase {
+func PhaseRoadStart(game *Game) Phase {
 	end := PhaseIdleWithNotification(game, "Road Built!")
-	return newPhaseRoadStart(game, previousPhase, false, end, "")
+	return newPhaseRoadStart(game, false, end, "")
 }
 
 // Phase for building two roads by using a development card
 func PhaseRoadBuilding(game *Game) Phase {
 	// First free road - continuation will be second free road
 	end := PhaseIdleWithNotification(game, "Two free roads built!")
-	second := newPhaseRoadStart(game, PhaseIdle(game), true, end, "second free")
-	return newPhaseRoadStart(game, PhaseIdle(game), true, second, "first free")
+	second := newPhaseRoadStart(game, true, end, "second free")
+	return newPhaseRoadStart(game, true, second, "first free")
 }
 
-func newPhaseRoadStart(game *Game, previousPhase Phase, isFree bool, continuation Phase, helpPrefix string) Phase {
+func newPhaseRoadStart(game *Game, isFree bool, continuation Phase, helpPrefix string) Phase {
 	cursorCross := game.Board.ValidCrossCoord()
 	return &phaseRoadStart{
-		game:          game,
-		cursorCross:   cursorCross,
-		previousPhase: previousPhase,
-		isFree:        isFree,
-		continuation:  continuation,
-		helpPrefix:    helpPrefix,
+		game:         game,
+		cursorCross:  cursorCross,
+		isFree:       isFree,
+		continuation: continuation,
+		helpPrefix:   helpPrefix,
 	}
 }
 
-func (p *phaseRoadStart) Confirm() Phase {
+func (p *phaseRoadStart) ConfirmTurn() (Phase, EnterMode) {
 	// Check if player has a road or settlement connected to this crossing
 	playerId := p.game.PlayerTurn
 	if !p.game.Board.HasRoadConnected(p.cursorCross, playerId) {
 		// Check if player has a settlement at this crossing
 		if !p.game.Board.HasSettlementAt(p.cursorCross, playerId) {
 			p.invalid = "You must have a road or settlement connected to this crossing"
-			return p // Invalid selection, stay in same phase
+			return p, EnterReplace // Invalid selection, stay in same phase
 		}
 	}
-	return newPhaseRoadEnd(p.game, p.cursorCross, p.previousPhase, p.isFree, p.continuation, p.helpPrefix)
-}
-
-func (p *phaseRoadStart) Cancel() Phase {
-	// Don't allow cancelling free roads (from development cards)
+	next := newPhaseRoadEnd(p.game, p.cursorCross, p.isFree, p.continuation, p.helpPrefix)
 	if p.isFree {
-		return p
+		return next, EnterReplace
 	}
-	return p.previousPhase
+	return next, EnterPush
 }
 
 func (p *phaseRoadStart) HelpText() string {
@@ -85,22 +78,25 @@ func (p *phaseRoadStart) MoveCursor(direction string) {
 	p.cursorCross = dest
 }
 
+func (p *phaseRoadStart) Menu() string {
+	return "Select road starting point on the map"
+}
+
 type phaseRoadEnd struct {
-	game          *Game
-	startCross    board.CrossCoord
-	cursorCross   board.CrossCoord
-	previousPhase Phase
-	invalid       string
-	isFree        bool
-	continuation  Phase
-	helpPrefix    string
+	game         *Game
+	startCross   board.CrossCoord
+	cursorCross  board.CrossCoord
+	invalid      string
+	isFree       bool
+	continuation Phase
+	helpPrefix   string
 }
 
-func PhaseRoadEnd(game *Game, startCross board.CrossCoord, previousPhase Phase) Phase {
-	return newPhaseRoadEnd(game, startCross, previousPhase, false, nil, "")
+func PhaseRoadEnd(game *Game, startCross board.CrossCoord) Phase {
+	return newPhaseRoadEnd(game, startCross, false, PhaseIdleWithNotification(game, "Road Built!"), "")
 }
 
-func newPhaseRoadEnd(game *Game, startCross board.CrossCoord, previousPhase Phase, isFree bool, continuation Phase, helpPrefix string) Phase {
+func newPhaseRoadEnd(game *Game, startCross board.CrossCoord, isFree bool, continuation Phase, helpPrefix string) Phase {
 	// Start with the first neighbor of the start cross
 	neighbors := startCross.Neighbors()
 	if len(neighbors) == 0 {
@@ -108,44 +104,34 @@ func newPhaseRoadEnd(game *Game, startCross board.CrossCoord, previousPhase Phas
 	}
 	cursorCross := neighbors[0]
 
-	finalContinuation := continuation
-	if finalContinuation == nil {
-		finalContinuation = previousPhase
-	}
-
 	return &phaseRoadEnd{
-		game:          game,
-		startCross:    startCross,
-		cursorCross:   cursorCross,
-		previousPhase: previousPhase,
-		isFree:        isFree,
-		continuation:  finalContinuation,
-		helpPrefix:    helpPrefix,
+		game:         game,
+		startCross:   startCross,
+		cursorCross:  cursorCross,
+		isFree:       isFree,
+		continuation: continuation,
+		helpPrefix:   helpPrefix,
 	}
 }
 
-func (p *phaseRoadEnd) Confirm() Phase {
+func (p *phaseRoadEnd) ConfirmTurn() (Phase, EnterMode) {
 	player := &p.game.Players[p.game.PlayerTurn]
 	playerId := p.game.PlayerTurn
 	pathCoord := board.NewPathCoord(p.startCross, p.cursorCross)
 
 	if !p.game.Board.CanPlaceRoad(pathCoord, playerId) {
 		p.invalid = "Can't build road here"
-		return p
+		return p, EnterReplace
 	}
 
 	if player.RoadsAvailable <= 0 {
-		if p.continuation == nil {
-			return PhaseIdleWithNotification(p.game, "No roads left to build")
-		} else {
-			return p.continuation
-		}
+		return p.continuation, EnterReset
 	}
 
 	if !p.isFree {
 		if !player.BuildRoad() {
 			p.invalid = "Not enough resources"
-			return p
+			return p, EnterReplace
 		}
 	}
 
@@ -157,28 +143,7 @@ func (p *phaseRoadEnd) Confirm() Phase {
 		p.game.LogAction(fmt.Sprintf("%s built a road", player.RenderName()))
 	}
 
-	message := "Road built!"
-	if p.isFree {
-		if p.helpPrefix != "" {
-			message = fmt.Sprintf("%s road built!", strings.Title(p.helpPrefix))
-		} else {
-			message = "Free road built!"
-		}
-	}
-
-	if p.continuation == nil {
-		return PhaseIdleWithNotification(p.game, message)
-	} else {
-		return p.continuation
-	}
-}
-
-func (p *phaseRoadEnd) Cancel() Phase {
-	// Don't allow cancelling free roads (from development cards)
-	if p.isFree {
-		return p
-	}
-	return newPhaseRoadStart(p.game, p.previousPhase, p.isFree, p.continuation, p.helpPrefix)
+	return p.continuation, EnterReset
 }
 
 func (p *phaseRoadEnd) HelpText() string {
@@ -215,4 +180,8 @@ func (p *phaseRoadEnd) MoveCursor(direction string) {
 	if ok {
 		p.cursorCross = dest
 	}
+}
+
+func (p *phaseRoadEnd) Menu() string {
+	return "Select road ending point on the map"
 }

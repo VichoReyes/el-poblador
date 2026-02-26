@@ -17,9 +17,9 @@ func PhaseGameEnd(game *Game, winner *Player) Phase {
 	}
 }
 
-func (p *phaseGameEnd) Confirm() Phase {
+func (p *phaseGameEnd) ConfirmTurn() (Phase, EnterMode) {
 	// Game is over, stay in this phase
-	return p
+	return p, EnterReplace
 }
 
 func (p *phaseGameEnd) MoveCursor(direction string) {

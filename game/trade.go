@@ -2,8 +2,10 @@ package game
 
 import (
 	"fmt"
-	"git.sr.ht/~vicho/el_poblador/board"
 	"strings"
+
+	"git.sr.ht/~vicho/el_poblador/board"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // OfferStatus represents the state of a trade offer.
@@ -90,7 +92,7 @@ func (t *TradeOffer) String() string {
 
 // RenderForPool creates a rich string representation for the trade pool UI
 // including offerer name (colored), target information, and offer details.
-func (t *TradeOffer) RenderForPool(g *Game) string {
+func (t *TradeOffer) RenderForPool(g *Game, style lipgloss.Style) string {
 	offerer := &g.Players[t.OffererID]
 	offerStr := t.String()
 
@@ -102,7 +104,7 @@ func (t *TradeOffer) RenderForPool(g *Game) string {
 	}
 
 	return fmt.Sprintf("%s → %s: %s",
-		offerer.RenderName(), targetStr, offerStr)
+		offerer.RenderName(), targetStr, style.Render(offerStr))
 }
 
 // Can a player take a given offer?

@@ -25,26 +25,26 @@ func PhaseDiceRoll(game *Game) Phase {
 	}
 }
 
-func (p *phaseDiceRoll) Confirm() Phase {
+func (p *phaseDiceRoll) ConfirmTurn() (Phase, EnterMode) {
 	switch p.selected {
 	case 0:
-		return rollDice(p.game)
+		return rollDice(p.game), EnterReset
 	case 1:
 		// Play Knight card
 		player := &p.game.Players[p.game.PlayerTurn]
 		if player.PlayDevCard(DevCardKnight) {
-			return PhasePlaceRobber(p.game, p)
+			return PhasePlaceRobber(p.game, p), EnterReset
 		}
 		p.invalid = "You don't have a Knight card"
-		return p
+		return p, EnterReplace
 	case 2:
 		// Save & Quit
 		if err := saveGameState(p.game); err != nil {
 			p.invalid = fmt.Sprintf("Save failed: %v", err)
-			return p
+			return p, EnterReplace
 		}
 		p.game.shouldQuit = true
-		return p
+		return p, EnterReplace
 	default:
 		panic("Invalid option selected")
 	}
@@ -62,10 +62,10 @@ func rollDice(game *Game) Phase {
 	sum := game.LastDice[0] + game.LastDice[1]
 
 	// Initialize spectator phases for all non-turn holders
-	game.spectatorPhases = make(map[int]SpectatorPhase)
+	game.spectatorPhaseStacks = make(map[int][]SpectatorPhase)
 	for i := range game.Players {
 		if i != game.PlayerTurn {
-			game.spectatorPhases[i] = PhaseSpectatorIdle(game, i)
+			game.SetSpectatorPhase(i, PhaseSpectatorIdle(game, i))
 		}
 	}
 
@@ -129,18 +129,18 @@ func PhaseIdleWithNotification(game *Game, notification string) Phase {
 	}
 }
 
-func (p *phaseIdle) Confirm() Phase {
+func (p *phaseIdle) ConfirmTurn() (Phase, EnterMode) {
 	switch p.selected {
 	case 0: // Build
-		return PhaseBuilding(p.game, p)
+		return PhaseBuilding(p.game), EnterPush
 	case 1: // Make Trade Offer
-		return PhaseTradeOffer(p.game)
+		return PhaseTradeOffer(p.game), EnterPush
 	case 2: // Check Trade Offers
-		return PhaseTradePool(p.game)
+		return PhaseTradePool(p.game), EnterPush
 	case 3: // Play Development Card
-		return PhasePlayDevelopmentCard(p.game, p)
+		return PhasePlayDevelopmentCard(p.game), EnterPush
 	case 4: // End Turn
-		return p.game.NextTurn()
+		return p.game.NextTurn(), EnterReset
 	default:
 		panic("Invalid option selected")
 	}

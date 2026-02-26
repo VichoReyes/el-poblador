@@ -11,8 +11,16 @@ import (
 // when implementing, ensure the options aren't empty
 type phaseWithOptions struct {
 	game     *Game
+	playerID *int // nil = use game.PlayerTurn (turn holder), non-nil = spectator
 	options  []string
 	selected int
+}
+
+func (p *phaseWithOptions) getPlayerID() int {
+	if p.playerID != nil {
+		return *p.playerID
+	}
+	return p.game.PlayerTurn
 }
 
 func (p *phaseWithOptions) BoardCursor() interface{} {
@@ -21,7 +29,7 @@ func (p *phaseWithOptions) BoardCursor() interface{} {
 
 func (p *phaseWithOptions) Menu() string {
 	paddedOptions := make([]string, len(p.options))
-	player := &p.game.Players[p.game.PlayerTurn]
+	player := &p.game.Players[p.getPlayerID()]
 	for i, option := range p.options {
 		if i == p.selected {
 			paddedOptions[i] = player.Render("> ") + option

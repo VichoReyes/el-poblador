@@ -60,7 +60,7 @@ go run cmd/fullscreen/main.go
 ### Game Phase System
 The game uses a phase-based architecture where all game states implement the `Phase` interface:
 - `Phase` - Base interface with `Confirm()`, `MoveCursor()`, `BoardCursor()`, `HelpText()`
-- `PhaseWithMenu` - Phases that show selection menus (implements some Phase methods)
+- `PhaseView` - Shared view behavior for phases (`MoveCursor()`, `HelpText()`, `Menu()`)
 - `PhaseCancelable` - Phases that can be cancelled (extends Phase)
 
 Key phases include:

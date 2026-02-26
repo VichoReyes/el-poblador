@@ -20,18 +20,18 @@ func TestInitialSettlementsRender(t *testing.T) {
 			t.Fatalf("Help text '%s' does not contain expected turn '%s'. Iteration %d", help, expectedTurn, i)
 		}
 
-		if _, ok := game.phase.(*phaseInitialSettlements); !ok {
+		if _, ok := game.Phase().(*phaseInitialSettlements); !ok {
 			t.Fatalf("Phase is not initial settlements. Iteration %d", i)
 		}
 		game.MoveCursorToPlaceSettlement()
 
 		game.ConfirmAction(nil) // place settlement
-		if _, ok := game.phase.(*phaseInitialRoad); !ok {
+		if _, ok := game.Phase().(*phaseInitialRoad); !ok {
 			t.Fatalf("Phase is not initial road. Iteration %d", i)
 		}
 		game.ConfirmAction(nil) // place road
 	}
-	if _, ok := game.phase.(*phaseDiceRoll); !ok {
+	if _, ok := game.Phase().(*phaseDiceRoll); !ok {
 		t.Fatal("Phase should be dice roll after initial flow is complete")
 	}
 	game.ConfirmAction(nil) // roll dice

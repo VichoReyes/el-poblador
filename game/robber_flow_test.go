@@ -72,25 +72,25 @@ func TestKnightPlayLeadsToRobberPlacementAndPotentialSteal(t *testing.T) {
 	}
 
 	// Start from dice roll phase and select Play Knight (index 1)
-	g.phase = PhaseDiceRoll(g)
+	g.SetPhase(PhaseDiceRoll(g))
 	// Move selection down once to "Play Knight"
 	g.MoveCursor("down", nil)
 	g.ConfirmAction(nil)
 
 	// We should now be in place-robber phase
-	if _, ok := g.phase.(*phasePlaceRobber); !ok {
-		t.Fatalf("expected phasePlaceRobber, got %T", g.phase)
+	if _, ok := g.Phase().(*phasePlaceRobber); !ok {
+		t.Fatalf("expected phasePlaceRobber, got %T", g.Phase())
 	}
 
 	// Directly set the tile cursor to our chosen tile and confirm placement
-	pr := g.phase.(*phasePlaceRobber)
+	pr := g.Phase().(*phasePlaceRobber)
 	pr.tileCoord = tile
 	g.ConfirmAction(nil)
 
 	// Since victim has resources and is adjacent, we should now be in steal phase
-	steal, ok := g.phase.(*phaseStealCard)
+	steal, ok := g.Phase().(*phaseStealCard)
 	if !ok {
-		t.Fatalf("expected phaseStealCard, got %T", g.phase)
+		t.Fatalf("expected phaseStealCard, got %T", g.Phase())
 	}
 
 	// Select the victim if multiple players are available
@@ -171,7 +171,7 @@ func TestRobberCannotBePlacedOnSameTile(t *testing.T) {
 	phase.tileCoord = initialTile
 
 	// Try to confirm placement on same tile
-	newPhase := phase.Confirm()
+	newPhase, _ := phase.ConfirmTurn()
 
 	// Should still be in place robber phase with error message
 	if prPhase, ok := newPhase.(*phasePlaceRobber); !ok {

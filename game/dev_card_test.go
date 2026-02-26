@@ -104,29 +104,22 @@ func TestKnightCardUsage(t *testing.T) {
 
 	// Test that the dice roll phase always shows the knight option
 	dicePhase := PhaseDiceRoll(game)
-	if phaseWithMenu, ok := dicePhase.(PhaseWithMenu); ok {
-		menu := phaseWithMenu.Menu()
-		if !strings.Contains(menu, "Play Knight") {
-			t.Fatal("Dice roll phase should always show Play Knight option")
-		}
+	menu := dicePhase.Menu()
+	if !strings.Contains(menu, "Play Knight") {
+		t.Fatal("Dice roll phase should always show Play Knight option")
 	}
 
 	// Test that the idle phase shows the development card option
-	idlePhase := PhaseIdle(game)
-	if phaseWithMenu, ok := idlePhase.(PhaseWithMenu); ok {
-		menu := phaseWithMenu.Menu()
-		if !strings.Contains(menu, "Play Development Card") {
-			t.Fatal("Idle phase should show Play Development Card option")
-		}
+	menu = PhaseIdle(game).Menu()
+	if !strings.Contains(menu, "Play Development Card") {
+		t.Fatal("Idle phase should show Play Development Card option")
 	}
 
 	// Test that the development card phase shows knight options when available
-	devCardPhase := PhasePlayDevelopmentCard(game, idlePhase)
-	if phaseWithMenu, ok := devCardPhase.(PhaseWithMenu); ok {
-		menu := phaseWithMenu.Menu()
-		if !strings.Contains(menu, "Knight") {
-			t.Fatal("Development card phase should show Knight option when player has knight cards")
-		}
+	devCardPhase := PhasePlayDevelopmentCard(game)
+	menu = devCardPhase.Menu()
+	if !strings.Contains(menu, "Knight") {
+		t.Fatal("Development card phase should show Knight option when player has knight cards")
 	}
 
 	// Test that the knight card is consumed when played
@@ -159,13 +152,13 @@ func TestMonopolyCard(t *testing.T) {
 	game.Players[2].AddResource(board.ResourceOre)   // Charlie (different resource)
 
 	// Create development card phase and select monopoly
-	devCardPhase := PhasePlayDevelopmentCard(game, PhaseIdle(game))
+	devCardPhase := PhasePlayDevelopmentCard(game)
 	devCardPhaseImpl := devCardPhase.(*phasePlayDevelopmentCard)
 
 	devCardPhaseImpl.selected = 0 // First card is monopoly
 
 	// Execute dev card phase - should play monopoly card and transition to monopoly phase
-	monopolyPhase := devCardPhaseImpl.Confirm()
+	monopolyPhase, _ := devCardPhaseImpl.ConfirmTurn()
 
 	// Verify we got monopoly phase
 	monopolyPhaseImpl, ok := monopolyPhase.(*phaseMonopoly)
@@ -192,7 +185,7 @@ func TestMonopolyCard(t *testing.T) {
 
 	// Set selection to wheat and execute monopoly
 	monopolyPhaseImpl.selected = wheatIndex
-	nextPhase := monopolyPhaseImpl.Confirm()
+	nextPhase, _ := monopolyPhaseImpl.ConfirmTurn()
 
 	// Verify Alice collected all wheat
 	expectedAliceWheat := initialAliceWheat + initialBobWheat + initialCharlieWheat
@@ -234,12 +227,12 @@ func TestYearOfPlentyCard(t *testing.T) {
 	initialOre := game.Players[0].Resources[board.ResourceOre]
 
 	// Create development card phase and select year of plenty
-	devCardPhase := PhasePlayDevelopmentCard(game, PhaseIdle(game))
+	devCardPhase := PhasePlayDevelopmentCard(game)
 	devCardPhaseImpl := devCardPhase.(*phasePlayDevelopmentCard)
 	devCardPhaseImpl.selected = 0 // First card is year of plenty
 
 	// Execute dev card phase - should play card and transition to year of plenty phase
-	yearOfPlentyPhase := devCardPhaseImpl.Confirm()
+	yearOfPlentyPhase, _ := devCardPhaseImpl.ConfirmTurn()
 
 	// Verify we got year of plenty phase
 	yearOfPlentyPhaseImpl, ok := yearOfPlentyPhase.(*phaseYearOfPlenty)
@@ -271,7 +264,7 @@ func TestYearOfPlentyCard(t *testing.T) {
 
 	// Select first resource (wheat)
 	yearOfPlentyPhaseImpl.selected = wheatIndex
-	phase2 := yearOfPlentyPhaseImpl.Confirm()
+	phase2, _ := yearOfPlentyPhaseImpl.ConfirmTurn()
 
 	// Should still be in year of plenty phase waiting for second resource
 	yearOfPlentyPhaseImpl2, ok := phase2.(*phaseYearOfPlenty)
@@ -287,7 +280,7 @@ func TestYearOfPlentyCard(t *testing.T) {
 
 	// Select second resource (ore)
 	yearOfPlentyPhaseImpl2.selected = oreIndex
-	finalPhase := yearOfPlentyPhaseImpl2.Confirm()
+	finalPhase, _ := yearOfPlentyPhaseImpl2.ConfirmTurn()
 
 	// Should transition to idle phase
 	if _, ok := finalPhase.(*phaseIdle); !ok {
@@ -314,12 +307,12 @@ func TestRoadBuildingCard(t *testing.T) {
 	game.Players[0].HiddenDevCards = []DevCard{DevCardRoadBuilding}
 
 	// Create development card phase and select road building
-	devCardPhase := PhasePlayDevelopmentCard(game, PhaseIdle(game))
+	devCardPhase := PhasePlayDevelopmentCard(game)
 	devCardPhaseImpl := devCardPhase.(*phasePlayDevelopmentCard)
 	devCardPhaseImpl.selected = 0 // First card is road building
 
 	// Execute dev card phase - should play card and transition to road building phase
-	roadBuildingPhase := devCardPhaseImpl.Confirm()
+	roadBuildingPhase, _ := devCardPhaseImpl.ConfirmTurn()
 
 	// Verify we got road start phase (for free road building)
 	roadStartPhaseImpl, ok := roadBuildingPhase.(*phaseRoadStart)
@@ -364,14 +357,14 @@ func TestBuyDevelopmentCardThroughBuildingPhase(t *testing.T) {
 	initialPlayerCards := player.TotalDevCards()
 
 	// Create building phase
-	buildingPhase := PhaseBuilding(game, PhaseIdle(game))
+	buildingPhase := PhaseBuilding(game)
 	buildingPhaseImpl := buildingPhase.(*phaseBuilding)
 
 	// Select development card option (index 3)
 	buildingPhaseImpl.selected = 3
 
 	// Confirm the purchase
-	nextPhase := buildingPhaseImpl.Confirm()
+	nextPhase, _ := buildingPhaseImpl.ConfirmTurn()
 
 	// Should return to previous phase (idle)
 	if _, ok := nextPhase.(*phaseIdle); !ok {
@@ -416,7 +409,7 @@ func TestPlayKnightCardThroughDiceRollPhase(t *testing.T) {
 	diceRollPhaseImpl.selected = 1
 
 	// Confirm playing the knight card
-	nextPhase := diceRollPhaseImpl.Confirm()
+	nextPhase, _ := diceRollPhaseImpl.ConfirmTurn()
 
 	// Should transition to robber placement phase
 	if _, ok := nextPhase.(*phasePlaceRobber); !ok {

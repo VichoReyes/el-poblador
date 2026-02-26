@@ -7,10 +7,9 @@ import (
 
 type phaseBuilding struct {
 	phaseWithOptions
-	previousPhase Phase
 }
 
-func PhaseBuilding(game *Game, previousPhase Phase) Phase {
+func PhaseBuilding(game *Game) Phase {
 	player := &game.Players[game.PlayerTurn]
 
 	// Build the list of available building options
@@ -48,29 +47,28 @@ func PhaseBuilding(game *Game, previousPhase Phase) Phase {
 			game:    game,
 			options: options,
 		},
-		previousPhase: previousPhase,
 	}
 }
 
-func (p *phaseBuilding) Confirm() Phase {
+func (p *phaseBuilding) ConfirmTurn() (Phase, EnterMode) {
 	player := &p.game.Players[p.game.PlayerTurn]
 
 	switch p.selected {
 	case 0: // Road
 		if player.CanBuildRoad() {
-			return PhaseRoadStart(p.game, p)
+			return PhaseRoadStart(p.game), EnterPush
 		}
-		return p
+		return p, EnterReplace
 	case 1: // Settlement
 		if player.CanBuildSettlement() {
-			return PhaseSettlementPlacement(p.game, p)
+			return PhaseSettlementPlacement(p.game), EnterPush
 		}
-		return p
+		return p, EnterReplace
 	case 2: // City
 		if player.CanBuildCity() {
-			return PhaseCityPlacement(p.game, p)
+			return PhaseCityPlacement(p.game), EnterPush
 		}
-		return p
+		return p, EnterReplace
 	case 3: // Development Card
 		if player.CanBuyDevelopmentCard() {
 			if player.BuyDevelopmentCard() {
@@ -81,23 +79,19 @@ func (p *phaseBuilding) Confirm() Phase {
 
 					// Check for game end after buying development card (in case it's a victory point card)
 					if winner := p.game.CheckGameEnd(); winner != nil {
-						return PhaseGameEnd(p.game, winner)
+						return PhaseGameEnd(p.game, winner), EnterReset
 					}
 
-					return p.previousPhase
+					return PhaseIdleWithNotification(p.game, "Bought development card!"), EnterReset
 				}
 			}
 		}
-		return p
+		return p, EnterReplace
 	case 4: // Cancel
-		return p.previousPhase
+		return PhaseIdle(p.game), EnterReset
 	default:
 		panic("Invalid option selected")
 	}
-}
-
-func (p *phaseBuilding) Cancel() Phase {
-	return p.previousPhase
 }
 
 func (p *phaseBuilding) HelpText() string {
@@ -105,38 +99,36 @@ func (p *phaseBuilding) HelpText() string {
 }
 
 type phaseSettlementPlacement struct {
-	game          *Game
-	cursorCross   board.CrossCoord
-	previousPhase Phase
-	invalid       string
+	game        *Game
+	cursorCross board.CrossCoord
+	invalid     string
 }
 
-func PhaseSettlementPlacement(game *Game, previousPhase Phase) Phase {
+func PhaseSettlementPlacement(game *Game) Phase {
 	cursorCross := game.Board.ValidCrossCoord()
 	return &phaseSettlementPlacement{
-		game:          game,
-		cursorCross:   cursorCross,
-		previousPhase: previousPhase,
+		game:        game,
+		cursorCross: cursorCross,
 	}
 }
 
-func (p *phaseSettlementPlacement) Confirm() Phase {
+func (p *phaseSettlementPlacement) ConfirmTurn() (Phase, EnterMode) {
 	player := &p.game.Players[p.game.PlayerTurn]
 	playerId := p.game.PlayerTurn
 
 	if player.SettlementsAvailable == 0 {
 		p.invalid = "No settlements left"
-		return p
+		return p, EnterReplace
 	}
 
 	if !p.game.Board.CanPlaceSettlementForPlayer(p.cursorCross, playerId) {
 		p.invalid = "Can't build settlement here"
-		return p
+		return p, EnterReplace
 	}
 
 	if !player.BuildSettlement() {
 		p.invalid = "Not enough resources"
-		return p
+		return p, EnterReplace
 	}
 
 	p.game.Board.SetSettlement(p.cursorCross, playerId)
@@ -145,14 +137,10 @@ func (p *phaseSettlementPlacement) Confirm() Phase {
 
 	// Check for game end after building settlement
 	if winner := p.game.CheckGameEnd(); winner != nil {
-		return PhaseGameEnd(p.game, winner)
+		return PhaseGameEnd(p.game, winner), EnterReset
 	}
 
-	return PhaseIdleWithNotification(p.game, "Settlement built!")
-}
-
-func (p *phaseSettlementPlacement) Cancel() Phase {
-	return p.previousPhase
+	return PhaseIdleWithNotification(p.game, "Settlement built!"), EnterReset
 }
 
 func (p *phaseSettlementPlacement) HelpText() string {
@@ -174,39 +162,41 @@ func (p *phaseSettlementPlacement) MoveCursor(direction string) {
 	p.cursorCross = dest
 }
 
-type phaseCityPlacement struct {
-	game          *Game
-	cursorCross   board.CrossCoord
-	previousPhase Phase
-	invalid       string
+func (p *phaseSettlementPlacement) Menu() string {
+	return "Select settlement location on the map"
 }
 
-func PhaseCityPlacement(game *Game, previousPhase Phase) Phase {
+type phaseCityPlacement struct {
+	game        *Game
+	cursorCross board.CrossCoord
+	invalid     string
+}
+
+func PhaseCityPlacement(game *Game) Phase {
 	cursorCross := game.Board.ValidCrossCoord()
 	return &phaseCityPlacement{
-		game:          game,
-		cursorCross:   cursorCross,
-		previousPhase: previousPhase,
+		game:        game,
+		cursorCross: cursorCross,
 	}
 }
 
-func (p *phaseCityPlacement) Confirm() Phase {
+func (p *phaseCityPlacement) ConfirmTurn() (Phase, EnterMode) {
 	player := &p.game.Players[p.game.PlayerTurn]
 	playerId := p.game.PlayerTurn
 
 	if player.CitiesAvailable == 0 {
 		p.invalid = "No cities left"
-		return p
+		return p, EnterReplace
 	}
 
 	if !p.game.Board.CanUpgradeToCity(p.cursorCross, playerId) {
 		p.invalid = "Can't upgrade to city here"
-		return p
+		return p, EnterReplace
 	}
 
 	if !player.BuildCity() {
 		p.invalid = "Not enough resources"
-		return p
+		return p, EnterReplace
 	}
 
 	p.game.Board.UpgradeToCity(p.cursorCross, playerId)
@@ -215,14 +205,10 @@ func (p *phaseCityPlacement) Confirm() Phase {
 
 	// Check for game end after building city
 	if winner := p.game.CheckGameEnd(); winner != nil {
-		return PhaseGameEnd(p.game, winner)
+		return PhaseGameEnd(p.game, winner), EnterReset
 	}
 
-	return PhaseIdleWithNotification(p.game, "City built!")
-}
-
-func (p *phaseCityPlacement) Cancel() Phase {
-	return p.previousPhase
+	return PhaseIdleWithNotification(p.game, "City built!"), EnterReset
 }
 
 func (p *phaseCityPlacement) HelpText() string {
@@ -242,4 +228,8 @@ func (p *phaseCityPlacement) MoveCursor(direction string) {
 		return
 	}
 	p.cursorCross = dest
+}
+
+func (p *phaseCityPlacement) Menu() string {
+	return "Select city upgrade location on the map"
 }
