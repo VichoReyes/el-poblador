@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"strings"
+	"sync"
 
 	"git.sr.ht/~vicho/el_poblador/board"
 
@@ -44,8 +45,9 @@ func (g *Game) LogAction(action string) {
 	}
 }
 
-// Main game state
+// Main game state. Has mutex
 type Game struct {
+	m        sync.RWMutex
 	Board    *board.Board
 	Players  []Player
 	LastDice [2]int
@@ -85,7 +87,10 @@ type PrintOptions struct {
 	UseEmoji bool
 }
 
+// Game.Print renders the whole game, with relevant options like perspective
 func (g *Game) Print(opts PrintOptions) string {
+	g.m.RLock()
+	defer g.m.RUnlock()
 	if opts.Width == 0 {
 		opts.Width = 80
 	}
@@ -252,10 +257,9 @@ func (g *Game) helpText(width int, playerPerspective int) string {
 	return renderedHelp
 }
 
-func (g *Game) Start(playerNames []string) {
-	if len(playerNames) < 3 || len(playerNames) > 4 {
-		panic("Game must have 3-4 players")
-	}
+func (g *Game) MakeBoard() {
+	// TODO: make it so colors order isn't always the same,
+	// maybe even allow picking player color.
 	// Distinctive colors that work well on both light and dark backgrounds
 	colors := []lipgloss.AdaptiveColor{
 		{Light: "#1565C0", Dark: "#42A5F5"}, // Blue
@@ -263,11 +267,37 @@ func (g *Game) Start(playerNames []string) {
 		{Light: "#F57C00", Dark: "#FFB74D"}, // Orange
 		{Light: "#6A1B9A", Dark: "#AB47BC"}, // Purple
 	}
+	// Create player color map for board rendering
+	playerColors := make(map[int]lipgloss.AdaptiveColor)
+	for i, c := range colors {
+		playerColors[i] = c
+	}
+	g.Board = board.NewLegalBoard(playerColors)
+}
+
+func (g *Game) Start(playerNames []string) {
+	g.StartOptions(playerNames, true, true)
+}
+
+func (g *Game) StartOptions(playerNames []string, shufflePlayers, initBoard bool) {
+	if len(playerNames) < 3 || len(playerNames) > 4 {
+		panic("Game must have 3-4 players")
+	}
+	if shufflePlayers {
+		rand.Shuffle(len(playerNames), func(i, j int) {
+			playerNames[i], playerNames[j] = playerNames[j], playerNames[i]
+		})
+	}
+	if initBoard {
+		g.MakeBoard()
+	} else if g.Board == nil {
+		panic("Board should've been initialized")
+	}
 	g.Players = make([]Player, len(playerNames))
 	for i, name := range playerNames {
 		g.Players[i] = Player{
 			Name:                 name,
-			Color:                colors[i],
+			Color:                g.Board.PlayerColors[i],
 			Resources:            make(map[board.ResourceType]int),
 			HiddenDevCards:       make([]DevCard, 0),
 			PlayedDevCards:       make([]DevCard, 0),
@@ -276,15 +306,6 @@ func (g *Game) Start(playerNames []string) {
 			RoadsAvailable:       15,
 		}
 	}
-	rand.Shuffle(len(g.Players), func(i, j int) {
-		g.Players[i], g.Players[j] = g.Players[j], g.Players[i]
-	})
-	// Create player color map for board rendering
-	playerColors := make(map[int]lipgloss.AdaptiveColor)
-	for i, player := range g.Players {
-		playerColors[i] = player.Color
-	}
-	g.Board = board.NewLegalBoard(playerColors)
 	g.PlayerTurn = 0
 	g.phaseStack = []Phase{PhaseInitialSettlements(g, true)}
 	g.DevCardDeck = shuffleDevCards()
@@ -292,6 +313,8 @@ func (g *Game) Start(playerNames []string) {
 }
 
 func (g *Game) MoveCursor(direction string, requestPlayer *int) {
+	g.m.Lock()
+	defer g.m.Unlock()
 	playerPerspective := g.playerPerspective(requestPlayer)
 
 	if playerPerspective == g.PlayerTurn {
@@ -326,6 +349,8 @@ func (g *Game) MoveCursorToPlaceSettlement() {
 }
 
 func (g *Game) ConfirmAction(requestPlayer *int) {
+	g.m.Lock()
+	defer g.m.Unlock()
 	playerPerspective := g.playerPerspective(requestPlayer)
 
 	if playerPerspective == g.PlayerTurn {
@@ -342,6 +367,8 @@ func (g *Game) ConfirmAction(requestPlayer *int) {
 }
 
 func (g *Game) CancelAction(requestPlayer *int) {
+	g.m.Lock()
+	defer g.m.Unlock()
 	playerPerspective := g.playerPerspective(requestPlayer)
 
 	if playerPerspective == g.PlayerTurn {
@@ -455,6 +482,8 @@ func (g *Game) CheckGameEnd() *Player {
 }
 
 func (g *Game) ShouldQuit() bool {
+	g.m.RLock()
+	defer g.m.RUnlock()
 	return g.shouldQuit
 }
 

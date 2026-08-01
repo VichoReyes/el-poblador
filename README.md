@@ -38,8 +38,7 @@ go run main.go load <savefile>
 
 ## Online Multiplayer
 
-Online multiplayer is one of the [missing features](https://todo.sr.ht/~vicho/el_poblador/).
-It would be cool to have, though.
+It works now!
 
 ## License
 

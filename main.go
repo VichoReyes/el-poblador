@@ -5,29 +5,35 @@ import (
 	"encoding/gob"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 
 	"git.sr.ht/~vicho/el_poblador/board"
 	"git.sr.ht/~vicho/el_poblador/game"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/wish"
+	"github.com/charmbracelet/wish/activeterm"
+	"github.com/charmbracelet/wish/bubbletea"
+	"github.com/charmbracelet/wish/logging"
 )
 
-type model struct {
+// GameConn is the Bubble tea model for an active game
+type GameConn struct {
 	game           *game.Game
-	width          int
+	width          int // TODO: abstract to ResizableModel
 	height         int
-	userPlayer     *int
-	twoColumnCycle int // 0-1: for width 90-119
-	oneColumnCycle int // 0-2: for width <90
+	userPlayer     *int // nil means follow turn
+	twoColumnCycle int  // 0-1: for width 90-119
+	oneColumnCycle int  // 0-2: for width <90
 	useEmoji       bool
 }
 
-func (m model) Init() tea.Cmd {
+func (m *GameConn) Init() tea.Cmd {
 	return nil
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *GameConn) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -45,13 +51,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "esc":
 			m.game.CancelAction(m.userPlayer)
-		// switch to specific player's perspective
-		case "1", "2", "3", "4":
-			player := int(msg.String()[0] - '1')
-			m.userPlayer = &player
-		// switch back to turn holder's perspective
-		case "0":
-			m.userPlayer = nil
+
+		case "e":
+			m.useEmoji = !m.useEmoji
 		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -61,7 +63,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) View() string {
+func (m *GameConn) View() string {
 	return m.game.Print(game.PrintOptions{
 		Width:          m.width,
 		Height:         m.height,
@@ -70,6 +72,38 @@ func (m model) View() string {
 		OneColumnCycle: m.oneColumnCycle,
 		UseEmoji:       m.useEmoji,
 	})
+}
+
+// LocalConn is a GameConn with a selectable userPlayer
+type LocalConn GameConn
+
+func (m *LocalConn) Init() tea.Cmd {
+	gc := (*GameConn)(m)
+	return gc.Init()
+}
+
+func (m *LocalConn) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "1", "2", "3", "4":
+			player := int(msg.String()[0] - '1')
+			m.userPlayer = &player
+			return m, nil
+		case "0":
+			m.userPlayer = nil
+			return m, nil
+		}
+	}
+	gc := (*GameConn)(m)
+	gc2, cmd := gc.Update(msg)
+	asGameConn := gc2.(*GameConn)
+	return (*LocalConn)(asGameConn), cmd
+}
+
+func (m *LocalConn) View() string {
+	gc := (*GameConn)(m)
+	return gc.View()
 }
 
 func loadGameState(filename string) (*game.Game, error) {
@@ -94,10 +128,12 @@ func printUsage() {
 	fmt.Println("Usage:")
 	fmt.Println("  el_poblador new [options] <player1> <player2> <player3> [player4]")
 	fmt.Println("  el_poblador load <filename.gob>")
+	fmt.Println("  el_poblador serve")
 	fmt.Println()
 	fmt.Println("Commands:")
-	fmt.Println("  new   Start a new game with 3-4 players")
-	fmt.Println("  load  Load a saved game from file")
+	fmt.Println("  new    Start a new game with 3-4 players")
+	fmt.Println("  load   Load a saved game from file")
+	fmt.Println("  serve  Start an SSH server for multiplayer")
 	fmt.Println()
 	fmt.Println("Run 'el_poblador <command> -help' for command-specific options.")
 }
@@ -116,11 +152,16 @@ func main() {
 	}
 
 	command := args[0]
-	var g *game.Game
-	var useEmoji bool
 
 	switch command {
 	case "new":
+		// logFile, err := os.OpenFile("poblador.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+		// if err != nil {
+		// 	fmt.Println(err)
+		// 	os.Exit(1)
+		// }
+		// defer logFile.Close()
+		// log.SetOutput(logFile)
 		newCmd := flag.NewFlagSet("new", flag.ExitOnError)
 		rich := newCmd.Bool("rich", false, "Start all players with 20 of each resource (for testing)")
 		noEmoji := newCmd.Bool("no-emoji", false, "Don't use emojis, they break board alignment on some terminals")
@@ -131,7 +172,6 @@ func main() {
 			newCmd.PrintDefaults()
 		}
 		newCmd.Parse(args[1:])
-		useEmoji = !*noEmoji
 
 		playerNames := newCmd.Args()
 		if len(playerNames) < 3 || len(playerNames) > 4 {
@@ -141,7 +181,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		g = &game.Game{}
+		g := &game.Game{}
 		g.Start(playerNames)
 
 		if *rich {
@@ -150,6 +190,11 @@ func main() {
 					g.Players[i].Resources[res] = 20
 				}
 			}
+		}
+		p := tea.NewProgram(&LocalConn{game: g, useEmoji: !*noEmoji}, tea.WithAltScreen())
+		if _, err := p.Run(); err != nil {
+			fmt.Println("Error running program:", err)
+			os.Exit(1)
 		}
 
 	case "load":
@@ -162,7 +207,6 @@ func main() {
 			loadCmd.PrintDefaults()
 		}
 		loadCmd.Parse(args[1:])
-		useEmoji = !*noEmoji
 
 		if loadCmd.NArg() != 1 {
 			fmt.Println("Error: 'load' command requires a filename")
@@ -176,18 +220,49 @@ func main() {
 			fmt.Printf("Failed to load game: %v\n", err)
 			os.Exit(1)
 		}
-		g = loadedGame
+		p := tea.NewProgram(&LocalConn{game: loadedGame, useEmoji: !*noEmoji}, tea.WithAltScreen())
+		if _, err := p.Run(); err != nil {
+			fmt.Println("Error running program:", err)
+			os.Exit(1)
+		}
+
+	case "serve":
+		serveCmd := flag.NewFlagSet("serve", flag.ExitOnError)
+		addr := serveCmd.String("addr", "127.0.0.1:2222", "address, including port")
+		keyPath := serveCmd.String("keyPath", ".ssh/id_ed25519", "path to private SSH key")
+		dummy := serveCmd.Bool(
+			"dummy", false,
+			"make a local-like game per connection instead of multiplayer")
+		serveCmd.Usage = func() {
+			fmt.Println("Options:")
+			serveCmd.PrintDefaults()
+		}
+		serveCmd.Parse(args[1:])
+		log.Println("starting server at", *addr)
+		var handler bubbletea.Handler
+		if *dummy {
+			handler = dummyHandler
+		} else {
+			handler = singleGameHandler
+		}
+		server, err := wish.NewServer(
+			wish.WithAddress(*addr),
+			wish.WithHostKeyPath(*keyPath),
+			wish.WithMiddleware(
+				bubbletea.Middleware(handler),
+				activeterm.Middleware(),
+				logging.Middleware(),
+			),
+		)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		log.Fatalln(server.ListenAndServe())
 
 	default:
 		fmt.Printf("Error: unknown command '%s'\n", command)
 		fmt.Println()
 		printUsage()
-		os.Exit(1)
-	}
-
-	p := tea.NewProgram(model{game: g, useEmoji: useEmoji}, tea.WithAltScreen())
-	if _, err := p.Run(); err != nil {
-		fmt.Println("Error running program:", err)
 		os.Exit(1)
 	}
 }
