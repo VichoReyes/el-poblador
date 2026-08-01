@@ -40,6 +40,29 @@ go run main.go load <savefile>
 
 It works now!
 
+Start a server with
+
+```
+$ go run . serve
+2026/08/01 17:50:49 starting server at 127.0.0.1:2222
+```
+
+then players can connect with
+
+```
+$ ssh username@localhost -p 2222
+```
+
+Options for the server can be checked with
+
+```
+$ go run . serve -help
+```
+
+This feature is in its early stages and as such has a bunch of
+[rough edges](https://todo.sr.ht/~vicho/el_poblador?search=label%3A%22ssh%22).
+Do send patches or bug reports.
+
 ## License
 
 EUPL v1.2
