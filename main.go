@@ -164,6 +164,7 @@ func main() {
 		// log.SetOutput(logFile)
 		newCmd := flag.NewFlagSet("new", flag.ExitOnError)
 		rich := newCmd.Bool("rich", false, "Start all players with 20 of each resource (for testing)")
+		boardDebug := newCmd.Bool("board-debug", false, "Debug mode for board coordinates")
 		noEmoji := newCmd.Bool("no-emoji", false, "Don't use emojis, they break board alignment on some terminals")
 		newCmd.Usage = func() {
 			fmt.Println("Usage: el_poblador new [options] <player1> <player2> <player3> [player4]")
@@ -183,6 +184,10 @@ func main() {
 
 		g := &game.Game{}
 		g.Start(playerNames)
+
+		if *boardDebug {
+			g.SetPhase(game.PhaseDebugTiles(g))
+		}
 
 		if *rich {
 			for i := range g.Players {

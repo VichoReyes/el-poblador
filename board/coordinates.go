@@ -11,6 +11,7 @@ type CrossCoord struct {
 }
 
 // TileCoord represents the coordinates of a hexagonal tile.
+// it's the crosscoord of the intersection to the left of the tile.
 type TileCoord struct {
 	X, Y int
 }
