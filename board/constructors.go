@@ -1,7 +1,9 @@
 package board
 
 import (
+	"fmt"
 	"math/rand/v2"
+	"slices"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -60,8 +62,34 @@ func NewChaoticBoard() *Board {
 	return board
 }
 
+var orderedNumbers = []int{5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11}
+
+// in the order in which catan numbers are filled: from the outside in
+// TODO: make it so it can start in any corner
+var orderedTiles = []TileCoord{
+	{X: 0, Y: 3},
+	{X: 0, Y: 5},
+	{X: 0, Y: 7},
+	{X: 1, Y: 8},
+	{X: 2, Y: 9},
+	{X: 3, Y: 8},
+	{X: 4, Y: 7},
+	{X: 4, Y: 5},
+	{X: 4, Y: 3},
+	{X: 3, Y: 2},
+	{X: 2, Y: 1},
+	{X: 1, Y: 2},
+	{X: 1, Y: 4},
+	{X: 1, Y: 6},
+	{X: 2, Y: 7},
+	{X: 3, Y: 6},
+	{X: 3, Y: 4},
+	{X: 2, Y: 3},
+	{X: 2, Y: 5},
+}
+
 func NewLegalBoard(playerColors map[int]lipgloss.AdaptiveColor) *Board {
-	diceNumbers := []int{2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12}
+	diceNumbers := slices.Clone(orderedNumbers)
 	terrains := []TerrainType{
 		TerrainWood, TerrainWood, TerrainWood, TerrainWood,
 		TerrainBrick, TerrainBrick, TerrainBrick,
@@ -70,9 +98,6 @@ func NewLegalBoard(playerColors map[int]lipgloss.AdaptiveColor) *Board {
 		TerrainSheep, TerrainSheep, TerrainSheep, TerrainSheep,
 		TerrainDesert,
 	}
-	rand.Shuffle(len(diceNumbers), func(i, j int) {
-		diceNumbers[i], diceNumbers[j] = diceNumbers[j], diceNumbers[i]
-	})
 	rand.Shuffle(len(terrains), func(i, j int) {
 		terrains[i], terrains[j] = terrains[j], terrains[i]
 	})
@@ -83,20 +108,18 @@ func NewLegalBoard(playerColors map[int]lipgloss.AdaptiveColor) *Board {
 		CityUpgrades: make(map[CrossCoord]int),
 		PlayerColors: playerColors,
 	}
-	for x := 0; x <= 5; x++ {
-		for y := 0; y <= 10; y++ {
-			tileCoord, valid := NewTileCoord(x, y)
-			if !valid {
-				continue
-			}
-			terr := terrains[0]
-			terrains = terrains[1:]
-			if terr == TerrainDesert {
-				board.Tiles[tileCoord] = Tile{Terrain: terr, DiceNumber: 0}
-			} else {
-				board.Tiles[tileCoord] = Tile{Terrain: terr, DiceNumber: diceNumbers[0]}
-				diceNumbers = diceNumbers[1:]
-			}
+	for _, tileCoord := range orderedTiles {
+		_, valid := NewTileCoord(tileCoord.X, tileCoord.Y)
+		if !valid {
+			panic(fmt.Sprintf("tileCoord %v not valid", tileCoord))
+		}
+		terr := terrains[0]
+		terrains = terrains[1:]
+		if terr == TerrainDesert {
+			board.Tiles[tileCoord] = Tile{Terrain: terr, DiceNumber: 0}
+		} else {
+			board.Tiles[tileCoord] = Tile{Terrain: terr, DiceNumber: diceNumbers[0]}
+			diceNumbers = diceNumbers[1:]
 		}
 	}
 	return board
