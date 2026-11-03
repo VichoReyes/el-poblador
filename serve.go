@@ -62,13 +62,15 @@ func (m *UpdatingConn) View() string {
 	return gc.View()
 }
 
+type lobbyPlayer struct {
+	isReady     bool
+	playerIndex int
+}
+
 type lobbyCommon struct {
-	m       sync.RWMutex
-	name    string
-	players map[string]*struct {
-		isReady  bool
-		gameConn *UpdatingConn
-	}
+	m         sync.RWMutex
+	name      string
+	players   map[string]*lobbyPlayer
 	isStarted bool
 	game      game.Game
 	start     sync.Once
@@ -76,8 +78,9 @@ type lobbyCommon struct {
 }
 
 type lobbyRef struct {
-	lobby  *lobbyCommon
-	myName string
+	lobby    *lobbyCommon
+	myName   string
+	gameConn *UpdatingConn
 }
 
 var singleLobby = &lobbyCommon{name: "Game Lobby"}
@@ -93,6 +96,10 @@ func singleGameHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 	lr := &lobbyRef{
 		lobby:  lobby,
 		myName: s.User(),
+		gameConn: &UpdatingConn{
+			// TODO: width and height (but keep up to date)
+			game: &lobby.game,
+		},
 	}
 
 	return lr, []tea.ProgramOption{tea.WithAltScreen()}
@@ -146,8 +153,7 @@ func (lr *lobbyRef) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					i := 0
 					for name, p := range lr.lobby.players {
 						playerNames = append(playerNames, name)
-						p.gameConn.userPlayer = new(int)
-						*p.gameConn.userPlayer = i
+						p.playerIndex = i
 						i++
 					}
 					lr.lobby.game.StartOptions(playerNames, false, false)
@@ -166,8 +172,9 @@ func (lr *lobbyRef) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	lr.lobby.m.RLock()
 	defer lr.lobby.m.RUnlock()
 	if lr.lobby.isStarted {
-		myConn := lr.lobby.players[lr.myName].gameConn
-		return myConn, nil
+		playerIndex := lr.lobby.players[lr.myName].playerIndex
+		lr.gameConn.userPlayer = &playerIndex
+		return lr.gameConn, nil
 	}
 	return lr, nil
 }
@@ -177,10 +184,7 @@ func (lc *lobbyCommon) Join(username string) error {
 	lc.m.Lock()
 	defer lc.m.Unlock()
 	if lc.players == nil {
-		lc.players = make(map[string]*struct {
-			isReady  bool
-			gameConn *UpdatingConn
-		})
+		lc.players = make(map[string]*lobbyPlayer)
 	}
 	if len(lc.players) >= 4 {
 		return errors.New("lobby full")
@@ -188,17 +192,7 @@ func (lc *lobbyCommon) Join(username string) error {
 	if lc.players[username] != nil {
 		return errors.New("username already taken")
 	}
-	p := struct {
-		isReady  bool
-		gameConn *UpdatingConn
-	}{
-		isReady: false,
-		gameConn: &UpdatingConn{
-			// TODO: width and height (but keep up to date)
-			game: &lc.game,
-		},
-	}
-	lc.players[username] = &p
+	lc.players[username] = &lobbyPlayer{}
 	return nil
 }
 
