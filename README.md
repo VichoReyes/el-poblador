@@ -53,6 +53,13 @@ then players can connect with
 $ ssh username@localhost -p 2222
 ```
 
+Connections open a lobby browser. Use the arrow keys to select a lobby and
+Enter to join, or press `n` to create a named lobby.
+In a lobby, press Enter to signal you're ready and want the game to start (if the lobby has 3 players all ready, it won't wait for a 4th one).
+
+Rejoining games already in
+progress is not supported yet.
+
 Options for the server can be checked with
 
 ```

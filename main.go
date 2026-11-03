@@ -244,17 +244,17 @@ func main() {
 		}
 		serveCmd.Parse(args[1:])
 		log.Println("starting server at", *addr)
-		var handler bubbletea.Handler
+		var gameMiddleware wish.Middleware
 		if *dummy {
-			handler = dummyHandler
+			gameMiddleware = bubbletea.Middleware(dummyHandler)
 		} else {
-			handler = singleGameHandler
+			gameMiddleware = multiplayerMiddleware(newLobbyRegistry())
 		}
 		server, err := wish.NewServer(
 			wish.WithAddress(*addr),
 			wish.WithHostKeyPath(*keyPath),
 			wish.WithMiddleware(
-				bubbletea.Middleware(handler),
+				gameMiddleware,
 				activeterm.Middleware(),
 				logging.Middleware(),
 			),

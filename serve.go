@@ -1,211 +1,169 @@
 package main
 
 import (
-	"errors"
-	"fmt"
-	"strings"
-	"sync"
+	"log"
 	"time"
 
 	"git.sr.ht/~vicho/el_poblador/game"
 	tea "github.com/charmbracelet/bubbletea"
-
 	"github.com/charmbracelet/ssh"
+	"github.com/charmbracelet/wish"
+	"github.com/charmbracelet/wish/bubbletea"
 )
 
 const tickPeriod = 200 * time.Millisecond
 
 func dummyHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 	pty, _, _ := s.Pty()
-	gameConn := &GameConn{
-		width:  pty.Window.Width,
-		height: pty.Window.Height,
-		game:   &game.Game{},
-	}
-	dummyNames := []string{"a", "b", "c"}
-	gameConn.game.Start(dummyNames)
-	return gameConn, []tea.ProgramOption{tea.WithAltScreen()}
+	conn := &GameConn{width: pty.Window.Width, height: pty.Window.Height, game: &game.Game{}}
+	conn.game.Start([]string{"a", "b", "c"})
+	return conn, []tea.ProgramOption{tea.WithAltScreen()}
 }
 
 type TickMsg time.Time
 
 func doTick() tea.Cmd {
-	return tea.Tick(tickPeriod, func(t time.Time) tea.Msg {
-		return TickMsg(t)
+	return tea.Tick(tickPeriod, func(t time.Time) tea.Msg { return TickMsg(t) })
+}
+
+// Keep cleanup around the whole Bubble Tea program, including SSH disconnects.
+func multiplayerMiddleware(registry *lobbyRegistry) wish.Middleware {
+	return func(next ssh.Handler) ssh.Handler {
+		return func(s ssh.Session) {
+			pty, _, _ := s.Pty()
+			model := newSessionModel(registry, s.User(), pty.Window.Width, pty.Window.Height)
+			defer model.Close()
+			bubbletea.Middleware(func(ssh.Session) (tea.Model, []tea.ProgramOption) {
+				return model, []tea.ProgramOption{tea.WithAltScreen()}
+			})(next)(s)
+		}
+	}
+}
+
+type browseLobbiesMsg struct{}
+type createLobbyMsg struct{}
+type joinLobbyMsg struct{ id uint64 }
+type submitLobbyMsg struct{ name string }
+
+// SessionModel owns navigation, terminal dimensions, and the single refresh loop.
+// Only this SSH session owns its child models; the registry shares game state.
+// Update and View run on Bubble Tea's event loop. Close runs there on Ctrl+C,
+// or after the program stops; it must not run concurrently with that loop.
+type SessionModel struct {
+	registry      *lobbyRegistry
+	username      string
+	width, height int
+	active        tea.Model
+	lobby         *lobbyCommon
+	closed        bool
+}
+
+func newSessionModel(registry *lobbyRegistry, username string, width, height int) *SessionModel {
+	if width <= 0 {
+		width = 80
+	}
+	if height <= 0 {
+		height = 32
+	}
+	return &SessionModel{
+		registry: registry, username: username, width: width, height: height,
+		active: newLobbyBrowserModel(registry.List(), width, height),
+	}
+}
+
+func (m *SessionModel) Init() tea.Cmd {
+	return tea.Batch(doTick(), m.active.Init())
+}
+
+func (m *SessionModel) Close() {
+	m.closed = true
+	m.leaveLobby()
+}
+
+func (m *SessionModel) leaveLobby() {
+	if m.lobby != nil {
+		m.registry.Leave(m.lobby, m.username)
+		m.lobby = nil
+	}
+}
+
+func (m *SessionModel) activate(model tea.Model) tea.Cmd {
+	m.active = model
+	_, resize := model.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
+	return tea.Batch(model.Init(), resize)
+}
+
+func (m *SessionModel) enterLobby(lobby *lobbyCommon) tea.Cmd {
+	m.lobby = lobby
+	log.Printf("player joined lobby: lobby=%q id=%d player=%q", lobby.name, lobby.id, m.username)
+	return m.activate(&lobbyRef{
+		lobby: lobby, myName: m.username,
+		gameConn: &GameConn{game: &lobby.game},
 	})
 }
 
-// UpdatingConn is a GameConn that updates every 0.2s
-type UpdatingConn GameConn
-
-func (m *UpdatingConn) Init() tea.Cmd {
-	tickMsg := doTick()
-	gc := (*GameConn)(m)
-	existing := gc.Init()
-	return tea.Batch(tickMsg, existing)
-}
-
-func (m *UpdatingConn) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg.(type) {
-	case TickMsg:
-		return m, doTick()
+func (m *SessionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.closed {
+		return m, tea.Quit
 	}
-	gc := (*GameConn)(m)
-	gc2, cmd := gc.Update(msg)
-	asGameConn := gc2.(*GameConn)
-	return (*UpdatingConn)(asGameConn), cmd
-
-}
-
-func (m *UpdatingConn) View() string {
-	gc := (*GameConn)(m)
-	return gc.View()
-}
-
-type lobbyPlayer struct {
-	isReady     bool
-	playerIndex int
-}
-
-type lobbyCommon struct {
-	m         sync.RWMutex
-	name      string
-	players   map[string]*lobbyPlayer
-	isStarted bool
-	game      game.Game
-	start     sync.Once
-	boardInit sync.Once
-}
-
-type lobbyRef struct {
-	lobby    *lobbyCommon
-	myName   string
-	gameConn *UpdatingConn
-}
-
-var singleLobby = &lobbyCommon{name: "Game Lobby"}
-
-func singleGameHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
-	lobby := singleLobby
-	err := lobby.Join(s.User())
-	if err != nil {
-		// TODO test, what does this do?
-		return nil, nil
-	}
-	lobby.boardInit.Do(func() { lobby.game.MakeBoard() })
-	lr := &lobbyRef{
-		lobby:  lobby,
-		myName: s.User(),
-		gameConn: &UpdatingConn{
-			// TODO: width and height (but keep up to date)
-			game: &lobby.game,
-		},
-	}
-
-	return lr, []tea.ProgramOption{tea.WithAltScreen()}
-}
-
-func (lc *lobbyCommon) Name() string {
-	return lc.name
-}
-
-func (lr *lobbyRef) Init() tea.Cmd {
-	return doTick() // redraw every 1 sec
-}
-
-func (lr *lobbyRef) View() string {
-	lr.lobby.m.RLock()
-	defer lr.lobby.m.RUnlock()
-	lines := []string{
-		"Players in lobby:",
-	}
-	for name, p := range lr.lobby.players {
-		var readiness string
-		if p.isReady {
-			readiness = "ready"
-		} else {
-			readiness = "not ready"
-		}
-		lines = append(lines, fmt.Sprintf("%v [%v]", name, readiness))
-	}
-	// TODO: show rendered board
-	return strings.Join(lines, "\n")
-}
-
-func (lr *lobbyRef) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var refresh tea.Cmd
 	switch msg := msg.(type) {
-	case TickMsg:
-		return lr, doTick()
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c":
-			return nil, tea.Quit
-		case "enter":
-			lr.lobby.m.Lock()
-			// there should be a "+= 1 but for bools"
-			lr.lobby.players[lr.myName].isReady =
-				!lr.lobby.players[lr.myName].isReady
-
-			if lr.lobby.allReady() {
-				lr.lobby.start.Do(func() {
-					playerNames := []string{}
-					// this is basically the shuffle
-					i := 0
-					for name, p := range lr.lobby.players {
-						playerNames = append(playerNames, name)
-						p.playerIndex = i
-						i++
-					}
-					lr.lobby.game.StartOptions(playerNames, false, false)
-					lr.lobby.isStarted = true
-				})
-			}
-			lr.lobby.m.Unlock()
+		if msg.String() == "ctrl+c" {
+			m.Close()
+			return m, tea.Quit
 		}
-		/* this would be a dirty hack
-		case tea.WindowSizeMsg:
-			// make game react to window changes while in lobby?
-			lr.gameConn.Update(msg)
-		*/
-	}
-	// lots of mutex contention here potentially
-	lr.lobby.m.RLock()
-	defer lr.lobby.m.RUnlock()
-	if lr.lobby.isStarted {
-		playerIndex := lr.lobby.players[lr.myName].playerIndex
-		lr.gameConn.userPlayer = &playerIndex
-		return lr.gameConn, nil
-	}
-	return lr, nil
-}
-
-// locks mutex
-func (lc *lobbyCommon) Join(username string) error {
-	lc.m.Lock()
-	defer lc.m.Unlock()
-	if lc.players == nil {
-		lc.players = make(map[string]*lobbyPlayer)
-	}
-	if len(lc.players) >= 4 {
-		return errors.New("lobby full")
-	}
-	if lc.players[username] != nil {
-		return errors.New("username already taken")
-	}
-	lc.players[username] = &lobbyPlayer{}
-	return nil
-}
-
-// allReady returns true if 3-4 players and all ready
-// does not lock mutex
-func (lc *lobbyCommon) allReady() bool {
-	if len(lc.players) < 3 {
-		return false
-	}
-	for _, p := range lc.players {
-		if !p.isReady {
-			return false
+	case tea.WindowSizeMsg:
+		if msg.Width <= 0 || msg.Height <= 0 {
+			return m, nil
 		}
+		m.width, m.height = msg.Width, msg.Height
+	case TickMsg:
+		refresh = doTick()
+		if browser, ok := m.active.(*LobbyBrowserModel); ok {
+			refresh = tea.Batch(refresh, browser.refresh(m.registry.List()))
+		}
+	case createLobbyMsg:
+		if _, ok := m.active.(*LobbyBrowserModel); ok {
+			return m, m.activate(newCreateLobbyModel())
+		}
+		return m, nil
+	case submitLobbyMsg:
+		form, ok := m.active.(*CreateLobbyModel)
+		if !ok || m.lobby != nil {
+			return m, nil
+		}
+		lobby, err := m.registry.Create(msg.name, m.username)
+		if err != nil {
+			form.err = err
+			return m, nil
+		}
+		return m, m.enterLobby(lobby)
+	case joinLobbyMsg:
+		browser, ok := m.active.(*LobbyBrowserModel)
+		if !ok || m.lobby != nil {
+			return m, nil
+		}
+		lobby, err := m.registry.Join(msg.id, m.username)
+		if err != nil {
+			browser.err = err
+			return m, browser.refresh(m.registry.List())
+		}
+		return m, m.enterLobby(lobby)
+	case browseLobbiesMsg:
+		// Escape leaves waiting rooms; active games retain their Escape action.
+		switch m.active.(type) {
+		case *CreateLobbyModel, *lobbyRef:
+			m.leaveLobby()
+			return m, m.activate(newLobbyBrowserModel(m.registry.List(), m.width, m.height))
+		}
+		return m, nil
 	}
-	return true
+	next, cmd := m.active.Update(msg)
+	if next != m.active {
+		cmd = tea.Batch(cmd, m.activate(next))
+	}
+	return m, tea.Batch(refresh, cmd)
 }
+
+func (m *SessionModel) View() string { return m.active.View() }
