@@ -70,6 +70,9 @@ This feature is in its early stages and as such has a bunch of
 [rough edges](https://todo.sr.ht/~vicho/el_poblador?search=label%3A%22ssh%22).
 Do send patches or bug reports.
 
+For the hosted server's DNS, administration, updates, and teardown instructions,
+see [the deployment guide](deploy/gcp/README.md).
+
 ## License
 
 EUPL v1.2

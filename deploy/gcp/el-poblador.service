@@ -1,0 +1,29 @@
+[Unit]
+Description=El Poblador SSH game server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=el-poblador
+Group=el-poblador
+StateDirectory=el-poblador
+StateDirectoryMode=0700
+WorkingDirectory=/var/lib/el-poblador
+ExecStart=/usr/local/bin/el-poblador serve -addr 0.0.0.0:2222 -keyPath /var/lib/el-poblador/ssh_host_ed25519_key
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
