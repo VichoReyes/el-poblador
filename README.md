@@ -38,7 +38,23 @@ go run main.go load <savefile>
 
 ## Online Multiplayer
 
-It works now!
+There's a hosted version, so you only need to connect to see players.
+
+```bash
+$ ssh el-poblador.vichoreyes.cl -p 2222  # to see open lobbies
+```
+
+It's on GCP, as documented on
+[the deployment guide](deploy/gcp/README.md).
+
+Connections open a lobby browser. Use the arrow keys to select a lobby and
+Enter to join, or press `n` to create a named lobby.
+In a lobby, press Enter to signal you're ready and want the game to start (if the lobby has 3 players all ready, it won't wait for a 4th one).
+
+Rejoining games already in
+progress is not supported yet.
+
+### Self host
 
 Start a server with
 
@@ -50,15 +66,8 @@ $ go run . serve
 then players can connect with
 
 ```
-$ ssh username@localhost -p 2222
+$ ssh username@<host> -p 2222
 ```
-
-Connections open a lobby browser. Use the arrow keys to select a lobby and
-Enter to join, or press `n` to create a named lobby.
-In a lobby, press Enter to signal you're ready and want the game to start (if the lobby has 3 players all ready, it won't wait for a 4th one).
-
-Rejoining games already in
-progress is not supported yet.
 
 Options for the server can be checked with
 
@@ -69,9 +78,6 @@ $ go run . serve -help
 This feature is in its early stages and as such has a bunch of
 [rough edges](https://todo.sr.ht/~vicho/el_poblador?search=label%3A%22ssh%22).
 Do send patches or bug reports.
-
-For the hosted server's DNS, administration, updates, and teardown instructions,
-see [the deployment guide](deploy/gcp/README.md).
 
 ## License
 
