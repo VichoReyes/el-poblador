@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"git.sr.ht/~vicho/el_poblador/game"
+	"github.com/VichoReyes/el-poblador/game"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"

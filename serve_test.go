@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"git.sr.ht/~vicho/el_poblador/board"
+	"github.com/VichoReyes/el-poblador/board"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )

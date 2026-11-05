@@ -1,4 +1,4 @@
-module git.sr.ht/~vicho/el_poblador
+module github.com/VichoReyes/el-poblador
 
 go 1.23.0
 

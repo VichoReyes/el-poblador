@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"git.sr.ht/~vicho/el_poblador/board"
+	"github.com/VichoReyes/el-poblador/board"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"

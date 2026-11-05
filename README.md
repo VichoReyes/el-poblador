@@ -1,6 +1,6 @@
 # El Poblador - Settlers of Catan TUI
 
-[![builds.sr.ht status](https://builds.sr.ht/~vicho/el_poblador/commits/main/test.yml.svg)](https://builds.sr.ht/~vicho/el_poblador/commits/main/test.yml?)
+[![CI](https://github.com/VichoReyes/el-poblador/actions/workflows/ci.yml/badge.svg)](https://github.com/VichoReyes/el-poblador/actions/workflows/ci.yml)
 
 A terminal-based implementation of Settlers of Catan in Go.
 
@@ -8,24 +8,26 @@ A terminal-based implementation of Settlers of Catan in Go.
 
 ## Installation
 
-Download the latest release for your platform from [release builds](https://builds.sr.ht/~vicho/el_poblador/commits/main/release.yml). Alternatively, you can run `go install git.sr.ht/~vicho/el_poblador@latest`.
+Download the latest release for your platform from [GitHub Releases](https://github.com/VichoReyes/el-poblador/releases/latest). Alternatively, you can run `go install github.com/VichoReyes/el-poblador@main`.
 
-Another option is cloning the repo and building from [source](https://git.sr.ht/~vicho/el_poblador/refs). Or making an AUR package. Go wild.
+Use `@main` when installing with Go until a release is tagged with the GitHub module path. The installed binary is named `el-poblador`.
+
+Another option is cloning the repo and building from [source](https://github.com/VichoReyes/el-poblador). Or making an AUR package. Go wild.
 
 ## Running the Project
 
-The examples use `go run main.go`, but if you have a compiled binary use that instead.
+The examples use `go run .`, but if you have a compiled binary use that instead.
 
 Run the main game with 3-4 players:
 
 ```bash
-go run main.go new <player1> <player2> <player3> [player4]  # player names
+go run . new <player1> <player2> <player3> [player4]  # player names
 ```
 
 Load a saved game:
 
 ```bash
-go run main.go load <savefile>
+go run . load <savefile>
 ```
 
 **Controls:**
@@ -76,8 +78,8 @@ $ go run . serve -help
 ```
 
 This feature is in its early stages and as such has a bunch of
-[rough edges](https://todo.sr.ht/~vicho/el_poblador?search=label%3A%22ssh%22).
-Do send patches or bug reports.
+[rough edges](https://github.com/VichoReyes/el-poblador/issues?q=is%3Aissue%20is%3Aopen%20label%3Assh).
+Please send pull requests or [bug reports](https://github.com/VichoReyes/el-poblador/issues).
 
 ## License
 

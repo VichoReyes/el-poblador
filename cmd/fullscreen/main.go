@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"git.sr.ht/~vicho/el_poblador/game"
+	"github.com/VichoReyes/el-poblador/game"
 )
 
 func main() {

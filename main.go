@@ -8,8 +8,8 @@ import (
 	"log"
 	"os"
 
-	"git.sr.ht/~vicho/el_poblador/board"
-	"git.sr.ht/~vicho/el_poblador/game"
+	"github.com/VichoReyes/el-poblador/board"
+	"github.com/VichoReyes/el-poblador/game"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/wish"

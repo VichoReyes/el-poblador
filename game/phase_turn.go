@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"git.sr.ht/~vicho/el_poblador/board"
+	"github.com/VichoReyes/el-poblador/board"
 	"math/rand/v2"
 	"os"
 	"strings"

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"git.sr.ht/~vicho/el_poblador/board"
+	"github.com/VichoReyes/el-poblador/board"
 
 	"github.com/charmbracelet/lipgloss"
 )

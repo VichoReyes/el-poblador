@@ -9,7 +9,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"git.sr.ht/~vicho/el_poblador/game"
+	"github.com/VichoReyes/el-poblador/game"
 )
 
 const lobbyNameLimit = 40

@@ -1,7 +1,7 @@
 package game
 
 import (
-	"git.sr.ht/~vicho/el_poblador/board"
+	"github.com/VichoReyes/el-poblador/board"
 	"testing"
 )
 
