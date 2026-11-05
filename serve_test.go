@@ -6,7 +6,9 @@ import (
 	"sync"
 	"testing"
 
+	"git.sr.ht/~vicho/el_poblador/board"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Execute only the immediate navigation intent; refresh and cursor timers are
@@ -34,6 +36,70 @@ func createTestLobby(t *testing.T, session *SessionModel, name string) {
 	if _, ok := session.active.(*lobbyRef); !ok {
 		t.Fatalf("expected waiting room, got %T: %s", session.active, session.View())
 	}
+}
+
+func TestLobbyBoardPreview(t *testing.T) {
+	registry := newLobbyRegistry()
+	host := newSessionModel(registry, "alice", 80, 32)
+	createTestLobby(t, host, "Plan ahead")
+	lobby := host.lobby
+	generatedBoard := lobby.game.Board
+	preview := lobby.game.PrintBoard(board.BoardView{UseEmoji: true})
+	guest := newSessionModel(registry, "bob", 80, 32)
+	navigate(t, guest, tea.KeyEnter)
+
+	for _, session := range []*SessionModel{host, guest} {
+		for _, width := range []int{80, 120, 60, 80} {
+			session.Update(tea.WindowSizeMsg{Width: width, Height: 48})
+			view := session.View()
+			if width >= 80 {
+				for _, line := range strings.Split(preview, "\n") {
+					if !strings.Contains(view, line) {
+						t.Fatalf("%s at width %d is missing board line %q", session.username, width, line)
+					}
+				}
+				if !strings.Contains(view, "🪵") {
+					t.Error("lobby board preview is missing terrain emojis")
+				}
+			} else if strings.Contains(view, "/‾‾‾‾\\") || strings.Contains(view, "🪵") {
+				t.Error("narrow terminal still renders the board preview")
+			}
+			for _, text := range []string{"Plan ahead", "alice [not ready]", "bob [not ready]", "Enter:", "Esc:", "Ctrl+C:"} {
+				if !strings.Contains(view, text) {
+					t.Errorf("%s at width %d is missing %q", session.username, width, text)
+				}
+			}
+			if got := lipgloss.Width(view); got > width {
+				t.Errorf("preview width %d exceeds terminal width %d", got, width)
+			}
+			if width >= 80 && lipgloss.Height(view) > 32 {
+				t.Errorf("side-by-side preview exceeds 32 rows at width %d", width)
+			}
+		}
+	}
+	if lobby.isStarted || len(lobby.game.Players) != 0 || lobby.game.Phase() != nil || len(generatedBoard.Settlements) != 0 {
+		t.Fatal("preview initialized or changed gameplay")
+	}
+	if _, err := registry.Join(lobby.id, "carol"); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"alice", "bob", "carol"} {
+		lobby.toggleReady(name)
+	}
+	if lobby.game.Board != generatedBoard || lobby.game.PrintBoard(board.BoardView{UseEmoji: true}) != preview {
+		t.Fatal("starting the game changed the previewed board")
+	}
+
+	// A session can still render its lobby until the next refresh, while another
+	// player has already entered the game and is placing a settlement.
+	runLobbyWorkers(
+		func() {
+			for i := 0; i < 8; i++ {
+				host.View()
+			}
+		},
+		func() { lobby.game.ConfirmAction(nil) },
+	)
 }
 
 func TestLobbySessionsKeepPlayerNames(t *testing.T) {

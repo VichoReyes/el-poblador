@@ -87,6 +87,13 @@ type PrintOptions struct {
 	UseEmoji bool
 }
 
+// PrintBoard renders the board without requiring players or an active phase.
+func (g *Game) PrintBoard(view board.BoardView) string {
+	g.m.RLock()
+	defer g.m.RUnlock()
+	return strings.Join(g.Board.Print(view), "\n")
+}
+
 // Game.Print renders the whole game, with relevant options like perspective
 func (g *Game) Print(opts PrintOptions) string {
 	g.m.RLock()

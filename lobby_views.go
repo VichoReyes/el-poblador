@@ -5,10 +5,12 @@ import (
 	"sort"
 	"strings"
 
+	"git.sr.ht/~vicho/el_poblador/board"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 func (l lobbySnapshot) Title() string       { return l.name }
@@ -143,6 +145,9 @@ type lobbyRef struct {
 func (m *lobbyRef) Init() tea.Cmd { return nil }
 
 func (m *lobbyRef) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if size, ok := msg.(tea.WindowSizeMsg); ok {
+		m.gameConn.Update(size)
+	}
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch msg.String() {
 		case "esc":
@@ -163,7 +168,6 @@ func (m *lobbyRef) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *lobbyRef) View() string {
 	m.lobby.m.RLock()
-	defer m.lobby.m.RUnlock()
 	lines := []string{m.lobby.name, "", "Players in lobby:"}
 	names := make([]string, 0, len(m.lobby.players))
 	for name := range m.lobby.players {
@@ -177,7 +181,20 @@ func (m *lobbyRef) View() string {
 		}
 		lines = append(lines, fmt.Sprintf("%s [%s]", name, ready))
 	}
+	m.lobby.m.RUnlock()
 	lines = append(lines, "", "3–4 players required; the game starts when everyone is ready.",
 		"Enter: toggle ready · Esc: leave · Ctrl+C: quit")
-	return strings.Join(lines, "\n")
+	info := strings.Join(lines, "\n")
+	preview := m.lobby.game.PrintBoard(board.BoardView{UseEmoji: true})
+	width := m.gameConn.width
+	if width <= 0 {
+		width = 80
+	}
+	const gap = 2
+	infoWidth := width - lipgloss.Width(preview) - gap
+	if infoWidth >= 24 {
+		info = lipgloss.NewStyle().Width(infoWidth).PaddingRight(gap).Render(info)
+		return lipgloss.JoinHorizontal(lipgloss.Top, info, preview)
+	}
+	return lipgloss.NewStyle().Width(width).Render(info)
 }
