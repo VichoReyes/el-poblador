@@ -1,9 +1,7 @@
 package game
 
 import (
-	"fmt"
 	"github.com/VichoReyes/el-poblador/board"
-	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -14,6 +12,7 @@ type phaseWithOptions struct {
 	playerID *int // nil = use game.PlayerTurn (turn holder), non-nil = spectator
 	options  []string
 	selected int
+	disabled []bool
 }
 
 func (p *phaseWithOptions) getPlayerID() int {
@@ -27,17 +26,30 @@ func (p *phaseWithOptions) BoardCursor() interface{} {
 	return nil
 }
 
-func (p *phaseWithOptions) Menu() string {
-	paddedOptions := make([]string, len(p.options))
-	player := &p.game.Players[p.getPlayerID()]
+func (p *phaseWithOptions) Menu() RichText {
+	options := make([]RichText, len(p.options))
 	for i, option := range p.options {
-		if i == p.selected {
-			paddedOptions[i] = player.Render("> ") + option
-		} else {
-			paddedOptions[i] = fmt.Sprintf(" %s", option)
-		}
+		style := lipgloss.NewStyle().Strikethrough(i < len(p.disabled) && p.disabled[i])
+		options[i] = RichText{{Text: option, style: style}}
 	}
-	return strings.Join(paddedOptions, "\n")
+	return p.menuOptions(options)
+}
+
+func (p *phaseWithOptions) menuOptions(options []RichText) RichText {
+	var menu RichText
+	player := &p.game.Players[p.getPlayerID()]
+	for i, option := range options {
+		if i > 0 {
+			menu = append(menu, TextPart{Text: "\n"})
+		}
+		if i == p.selected {
+			menu = append(menu, playerText(player, "> "))
+		} else {
+			menu = append(menu, TextPart{Text: " "})
+		}
+		menu = append(menu, option...)
+	}
+	return menu
 }
 
 func (p *phaseWithOptions) MoveCursor(direction string) {
@@ -78,8 +90,4 @@ func moveCrossCursor(cursorCross board.CrossCoord, direction string) (board.Cros
 	default:
 		return cursorCross, false
 	}
-}
-
-func strikethroughStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Strikethrough(true)
 }

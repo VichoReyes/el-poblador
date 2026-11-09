@@ -20,7 +20,7 @@ type Phase interface {
 type PhaseView interface {
 	MoveCursor(direction string)
 	HelpText() string
-	Menu() string
+	Menu() RichText
 }
 
 type EnterMode int
@@ -38,13 +38,6 @@ type SpectatorPhase interface {
 	PhaseView
 }
 
-func (g *Game) LogAction(action string) {
-	g.ActionLog = append([]string{action}, g.ActionLog...)
-	if len(g.ActionLog) > 15 {
-		g.ActionLog = g.ActionLog[:15]
-	}
-}
-
 // Main game state. Has mutex
 type Game struct {
 	m        sync.RWMutex
@@ -58,7 +51,7 @@ type Game struct {
 	// who is the turn holder
 	PlayerTurn  int
 	DevCardDeck []DevCard
-	ActionLog   []string
+	ActionLog   []RichText
 	TradeOffers []TradeOffer
 	shouldQuit  bool
 }
@@ -70,13 +63,14 @@ func (g *Game) NextTurn() Phase {
 	g.PlayerTurn++
 	g.PlayerTurn %= len(g.Players)
 	nextPlayer := &g.Players[g.PlayerTurn]
-	g.LogAction(fmt.Sprintf("Turn passed to %s", nextPlayer.RenderName()))
+	g.LogAction("Turn passed to ", nextPlayer)
 	return PhaseDiceRoll(g)
 }
 
 const sidebarWidth = 34
 
 type PrintOptions struct {
+	Renderer      *lipgloss.Renderer // nil uses the local terminal renderer
 	Width, Height int
 	// RequestPlayer is the player that the user is playing as.
 	// If nil, the game will render from the perspective of the turn holder.
@@ -104,15 +98,20 @@ func (g *Game) Print(opts PrintOptions) string {
 	if opts.Height == 0 {
 		opts.Height = 32
 	}
+	r := opts.Renderer
+	if r == nil {
+		r = lipgloss.DefaultRenderer()
+	}
 	playerPerspective := g.playerPerspective(opts.RequestPlayer)
-	margin := lipgloss.NewStyle().Margin(1)
+	margin := r.NewStyle().Margin(1)
 
-	help := g.helpText(opts.Width, playerPerspective)
-	sidebar := g.buildSidebar(playerPerspective, margin, opts.UseEmoji)
+	help := g.helpText(opts.Width, playerPerspective, r)
+	sidebar := g.buildSidebar(playerPerspective, margin, opts.UseEmoji, r)
 
 	// Construct BoardView from current phase cursor
 	view := board.BoardView{
 		UseEmoji: opts.UseEmoji,
+		Renderer: r,
 	}
 	phase := g.Phase()
 	if phase == nil {
@@ -143,7 +142,7 @@ func (g *Game) Print(opts PrintOptions) string {
 	}
 
 	actionLogStyle := margin.Border(lipgloss.NormalBorder()).Width(actionLogWidth).Height(boardHeight - actionLogDecor)
-	actionLogContent := strings.Join(g.ActionLog, "\n")
+	actionLogContent := g.renderActionLog(r)
 	actionLogRendered := actionLogStyle.Render(actionLogContent)
 
 	var layout string
@@ -167,12 +166,12 @@ func (g *Game) Print(opts PrintOptions) string {
 	}
 
 	availableHeight := opts.Height - lipgloss.Height(help)
-	mainContent := lipgloss.Place(opts.Width, availableHeight, lipgloss.Center, lipgloss.Center, layout)
+	mainContent := r.Place(opts.Width, availableHeight, lipgloss.Center, lipgloss.Center, layout)
 
 	return lipgloss.JoinVertical(lipgloss.Left, mainContent, help)
 }
 
-func (g *Game) buildSidebar(playerPerspective int, margin lipgloss.Style, useEmoji bool) string {
+func (g *Game) buildSidebar(playerPerspective int, margin lipgloss.Style, useEmoji bool, r *lipgloss.Renderer) string {
 	var dice string
 	if g.LastDice[0] != 0 {
 		dice = fmt.Sprintf("Dice: %d (%d + %d)", g.LastDice[0]+g.LastDice[1], g.LastDice[0], g.LastDice[1])
@@ -185,11 +184,11 @@ func (g *Game) buildSidebar(playerPerspective int, margin lipgloss.Style, useEmo
 	for i, player := range g.Players {
 		var name string
 		if i == playerPerspective {
-			name = fmt.Sprintf("%s (you)", player.Render(player.Name))
+			name = fmt.Sprintf("%s (you)", player.Render(player.Name, r))
 		} else {
-			name = player.Render(player.Name)
+			name = player.Render(player.Name, r)
 		}
-		info := player.Render(fmt.Sprintf(" has %d resources, %d dev cards", player.TotalResources(), player.TotalDevCards()))
+		info := player.Render(fmt.Sprintf(" has %d resources, %d dev cards", player.TotalResources(), player.TotalDevCards()), r)
 		playerList = append(playerList, name, info)
 	}
 	otherPlayers := margin.Render(strings.Join(playerList, "\n"))
@@ -219,16 +218,16 @@ func (g *Game) buildSidebar(playerPerspective int, margin lipgloss.Style, useEmo
 	var phaseSidebar string
 	if playerPerspective == g.PlayerTurn {
 		if phase := g.Phase(); phase != nil {
-			phaseSidebar = margin.Render(phase.Menu())
+			phaseSidebar = margin.Render(phase.Menu().Render(r))
 		}
 	} else {
 		if spectatorPhase, ok := g.SpectatorPhase(playerPerspective); ok {
-			phaseSidebar = margin.Render(spectatorPhase.Menu())
+			phaseSidebar = margin.Render(spectatorPhase.Menu().Render(r))
 		}
 	}
 
 	sidebar := lipgloss.JoinVertical(lipgloss.Left, dice, otherPlayers, myResourcesStr, phaseSidebar)
-	return lipgloss.NewStyle().Width(sidebarWidth).Render(sidebar)
+	return r.NewStyle().Width(sidebarWidth).Render(sidebar)
 }
 
 func (g *Game) playerPerspective(requestPlayer *int) int {
@@ -239,28 +238,28 @@ func (g *Game) playerPerspective(requestPlayer *int) int {
 	}
 }
 
-func (g *Game) helpText(width int, playerPerspective int) string {
+func (g *Game) helpText(width int, playerPerspective int, r *lipgloss.Renderer) string {
 	turnPlayer := &g.Players[g.PlayerTurn]
 	var helpMsg string
 
 	if playerPerspective == g.PlayerTurn {
 		// Turn holder sees their phase help text
 		if phase := g.Phase(); phase != nil {
-			helpMsg = fmt.Sprintf("%s's turn. %s", turnPlayer.Render(turnPlayer.Name), phase.HelpText())
+			helpMsg = fmt.Sprintf("%s's turn. %s", turnPlayer.Render(turnPlayer.Name, r), phase.HelpText())
 		} else {
-			helpMsg = fmt.Sprintf("%s's turn.", turnPlayer.Render(turnPlayer.Name))
+			helpMsg = fmt.Sprintf("%s's turn.", turnPlayer.Render(turnPlayer.Name, r))
 		}
 	} else {
 		// Spectator sees their spectator phase help text
 		if spectatorPhase, ok := g.SpectatorPhase(playerPerspective); ok {
-			helpMsg = fmt.Sprintf("%s's turn. %s", turnPlayer.Render(turnPlayer.Name), spectatorPhase.HelpText())
+			helpMsg = fmt.Sprintf("%s's turn. %s", turnPlayer.Render(turnPlayer.Name, r), spectatorPhase.HelpText())
 		} else {
 			// No spectator phase yet (before dice roll)
-			helpMsg = fmt.Sprintf("%s's turn.", turnPlayer.Render(turnPlayer.Name))
+			helpMsg = fmt.Sprintf("%s's turn.", turnPlayer.Render(turnPlayer.Name, r))
 		}
 	}
 
-	renderedHelp := lipgloss.PlaceHorizontal(width, lipgloss.Center, helpMsg)
+	renderedHelp := r.PlaceHorizontal(width, lipgloss.Center, helpMsg)
 	return renderedHelp
 }
 
@@ -316,7 +315,7 @@ func (g *Game) StartOptions(playerNames []string, shufflePlayers, initBoard bool
 	g.PlayerTurn = 0
 	g.phaseStack = []Phase{PhaseInitialSettlements(g, true)}
 	g.DevCardDeck = shuffleDevCards()
-	g.ActionLog = make([]string, 0, 15)
+	g.ActionLog = make([]RichText, 0, 15)
 }
 
 func (g *Game) MoveCursor(direction string, requestPlayer *int) {

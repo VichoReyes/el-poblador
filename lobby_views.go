@@ -30,8 +30,13 @@ type LobbyBrowserModel struct {
 	err  error
 }
 
-func newLobbyBrowserModel(lobbies []lobbySnapshot, width, height int) *LobbyBrowserModel {
-	m := &LobbyBrowserModel{list: list.New(nil, list.NewDefaultDelegate(), width, max(1, height-2))}
+func newLobbyBrowserModel(lobbies []lobbySnapshot, width, height int, r *lipgloss.Renderer) *LobbyBrowserModel {
+	delegate := list.NewDefaultDelegate()
+	bindStyles(r, &delegate.Styles.NormalTitle, &delegate.Styles.NormalDesc,
+		&delegate.Styles.SelectedTitle, &delegate.Styles.SelectedDesc,
+		&delegate.Styles.DimmedTitle, &delegate.Styles.DimmedDesc, &delegate.Styles.FilterMatch)
+	m := &LobbyBrowserModel{list: list.New(nil, delegate, width, max(1, height-2))}
+	bindListStyles(&m.list, r)
 	m.list.Title = "El Poblador · Lobbies"
 	m.list.SetFilteringEnabled(false)
 	m.list.SetShowStatusBar(false)
@@ -99,8 +104,9 @@ type CreateLobbyModel struct {
 	err   error
 }
 
-func newCreateLobbyModel() *CreateLobbyModel {
+func newCreateLobbyModel(r *lipgloss.Renderer) *CreateLobbyModel {
 	input := textinput.New()
+	bindInputStyles(&input, r)
 	input.Placeholder = "Lobby name"
 	input.CharLimit = lobbyNameLimit
 	return &CreateLobbyModel{input: input}
@@ -185,7 +191,8 @@ func (m *lobbyRef) View() string {
 	lines = append(lines, "", "3–4 players required; the game starts when everyone is ready.",
 		"Enter: toggle ready · Esc: leave · Ctrl+C: quit")
 	info := strings.Join(lines, "\n")
-	preview := m.lobby.game.PrintBoard(board.BoardView{UseEmoji: true})
+	r := m.gameConn.renderer
+	preview := m.lobby.game.PrintBoard(board.BoardView{UseEmoji: true, Renderer: r})
 	width := m.gameConn.width
 	if width <= 0 {
 		width = 80
@@ -193,8 +200,8 @@ func (m *lobbyRef) View() string {
 	const gap = 2
 	infoWidth := width - lipgloss.Width(preview) - gap
 	if infoWidth >= 24 {
-		info = lipgloss.NewStyle().Width(infoWidth).PaddingRight(gap).Render(info)
+		info = r.NewStyle().Width(infoWidth).PaddingRight(gap).Render(info)
 		return lipgloss.JoinHorizontal(lipgloss.Top, info, preview)
 	}
-	return lipgloss.NewStyle().Width(width).Render(info)
+	return r.NewStyle().Width(width).Render(info)
 }

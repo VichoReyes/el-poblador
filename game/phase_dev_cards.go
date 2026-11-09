@@ -40,19 +40,19 @@ func (p *phasePlayDevelopmentCard) ConfirmTurn() (Phase, EnterMode) {
 	switch card {
 	case DevCardKnight:
 		player.PlayDevCard(card)
-		p.game.LogAction(fmt.Sprintf("%s played Knight", player.RenderName()))
+		p.game.LogAction(player, " played Knight")
 		return PhasePlaceRobber(p.game, PhaseIdle(p.game)), EnterReset
 	case DevCardRoadBuilding:
 		player.PlayDevCard(card)
-		p.game.LogAction(fmt.Sprintf("%s played Road Building", player.RenderName()))
+		p.game.LogAction(player, " played Road Building")
 		return PhaseRoadBuilding(p.game), EnterReset
 	case DevCardMonopoly:
 		player.PlayDevCard(card)
-		p.game.LogAction(fmt.Sprintf("%s played Monopoly", player.RenderName()))
+		p.game.LogAction(player, " played Monopoly")
 		return PhaseMonopoly(p.game), EnterReset
 	case DevCardYearOfPlenty:
 		player.PlayDevCard(card)
-		p.game.LogAction(fmt.Sprintf("%s played Year of Plenty", player.RenderName()))
+		p.game.LogAction(player, " played Year of Plenty")
 		return PhaseYearOfPlenty(p.game), EnterReset
 	case DevCardVictoryPoint:
 		return PhaseIdle(p.game), EnterReset
@@ -105,10 +105,10 @@ func (p *phaseMonopoly) ConfirmTurn() (Phase, EnterMode) {
 
 	if totalCollected > 0 {
 		currentPlayer.Resources[selectedResource] += totalCollected
-		p.game.LogAction(fmt.Sprintf("%s collected %d %s from all players", currentPlayer.RenderName(), totalCollected, selectedResource))
+		p.game.LogAction(currentPlayer, " collected ", totalCollected, " ", selectedResource, " from all players")
 		return PhaseIdleWithNotification(p.game, fmt.Sprintf("Collected %d %s from other players!", totalCollected, selectedResource)), EnterReset
 	} else {
-		p.game.LogAction(fmt.Sprintf("%s monopolized %s but collected nothing", currentPlayer.RenderName(), selectedResource))
+		p.game.LogAction(currentPlayer, " monopolized ", selectedResource, " but collected nothing")
 		return PhaseIdleWithNotification(p.game, "No resources collected - nobody had any!"), EnterReset
 	}
 }
@@ -159,7 +159,7 @@ func (p *phaseYearOfPlenty) ConfirmTurn() (Phase, EnterMode) {
 		currentPlayer.AddResource(resource)
 	}
 
-	p.game.LogAction(fmt.Sprintf("%s gained %s and %s from the bank", currentPlayer.RenderName(), p.selectedResources[0], p.selectedResources[1]))
+	p.game.LogAction(currentPlayer, " gained ", p.selectedResources[0], " and ", p.selectedResources[1], " from the bank")
 
 	return PhaseIdleWithNotification(p.game, fmt.Sprintf("Gained %s and %s from the bank!", p.selectedResources[0], p.selectedResources[1])), EnterReset
 }

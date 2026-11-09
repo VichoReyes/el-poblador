@@ -2,7 +2,6 @@ package game
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/VichoReyes/el-poblador/board"
 	"github.com/charmbracelet/lipgloss"
@@ -136,27 +135,19 @@ func (p *phaseTradeOffer) BoardCursor() interface{} {
 	return nil
 }
 
-func (p *phaseTradeOffer) Menu() string {
-	var lines []string
+func (p *phaseTradeOffer) Menu() RichText {
 	player := &p.game.Players[p.getPlayerID()]
-
-	lines = append(lines, "What do you want to offer?")
-	lines = append(lines, "")
-
+	menu := plainText("What do you want to offer?\n")
 	for i, resourceType := range board.RESOURCE_TYPES {
-		amount := p.offer[resourceType]
-		maxAvailable := player.Resources[resourceType]
-
-		line := fmt.Sprintf("%s:  %d / %d", resourceType, amount, maxAvailable)
+		menu = append(menu, TextPart{Text: "\n"})
 		if i == p.selected {
-			line = player.Render("> ") + line
+			menu = append(menu, playerText(player, "> "))
 		} else {
-			line = "  " + line
+			menu = append(menu, TextPart{Text: "  "})
 		}
-		lines = append(lines, line)
+		menu = append(menu, TextPart{Text: fmt.Sprintf("%s:  %d / %d", resourceType, p.offer[resourceType], player.Resources[resourceType])})
 	}
-
-	return strings.Join(lines, "\n")
+	return menu
 }
 
 func (p *phaseTradeOffer) HelpText() string {
@@ -252,26 +243,19 @@ func (p *phaseTradeSelectReceive) BoardCursor() interface{} {
 	return nil
 }
 
-func (p *phaseTradeSelectReceive) Menu() string {
-	var lines []string
+func (p *phaseTradeSelectReceive) Menu() RichText {
 	player := &p.game.Players[p.getPlayerID()]
-
-	lines = append(lines, "What do you want to receive?")
-	lines = append(lines, "")
-
+	menu := plainText("What do you want to receive?\n")
 	for i, resourceType := range board.RESOURCE_TYPES {
-		amount := p.request[resourceType]
-
-		line := fmt.Sprintf("%s:  %d", resourceType, amount)
+		menu = append(menu, TextPart{Text: "\n"})
 		if i == p.selected {
-			line = player.Render("> ") + line
+			menu = append(menu, playerText(player, "> "))
 		} else {
-			line = "  " + line
+			menu = append(menu, TextPart{Text: "  "})
 		}
-		lines = append(lines, line)
+		menu = append(menu, TextPart{Text: fmt.Sprintf("%s:  %d", resourceType, p.request[resourceType])})
 	}
-
-	return strings.Join(lines, "\n")
+	return menu
 }
 
 func (p *phaseTradeSelectReceive) HelpText() string {
@@ -289,8 +273,7 @@ func (p *phaseTradeSelectReceive) validateAndExecuteTrade() Phase {
 		player.Resources[offeredResource] -= 4
 		player.Resources[requestedResource]++
 
-		p.game.LogAction(fmt.Sprintf("%s traded 4 %s for 1 %s with the bank",
-			player.RenderName(), offeredResource, requestedResource))
+		p.game.LogAction(player, " traded 4 ", offeredResource, " for 1 ", requestedResource, " with the bank")
 
 		return PhaseIdleWithNotification(p.game,
 			fmt.Sprintf("Traded 4 %s for 1 %s!", offeredResource, requestedResource))
@@ -302,8 +285,7 @@ func (p *phaseTradeSelectReceive) validateAndExecuteTrade() Phase {
 			Offering:   p.offer,
 			Requesting: p.request,
 		}
-		p.game.LogAction(fmt.Sprintf("%s offered to trade %s",
-			player.RenderName(), offer.String()))
+		p.game.LogAction(player, " offered to trade ", offer.String())
 		return PhaseIdleWithNotification(p.game, "Trade offer created!")
 	}
 
@@ -352,15 +334,15 @@ func (p *phaseTradeSelectReceive) validateAndExecuteSpectatorTrade() SpectatorPh
 			Offering:   p.offer,
 			Requesting: p.request,
 		}
-		p.game.LogAction(fmt.Sprintf("%s offered to trade %s",
-			player.RenderName(), offer.String()))
+		p.game.LogAction(player, " offered to trade ", offer.String())
 	}
 	return PhaseSpectatorIdle(p.game, playerID)
 }
 
 type phaseTradePool struct {
 	phaseWithOptions
-	offersSnapshot []*TradeOffer
+	offersSnapshot  []*TradeOffer
+	unavailableFrom int
 }
 
 // Phase for accepting offers made by non-turn holders.
@@ -379,7 +361,6 @@ func newPhaseTradePool(g *Game, playerID *int) *phaseTradePool {
 	} else {
 		currentPlayer = g.PlayerTurn
 	}
-	strikethrough := strikethroughStyle()
 
 	// Categorize offers into actionable and non-actionable
 	var actionable []*TradeOffer
@@ -403,13 +384,13 @@ func newPhaseTradePool(g *Game, playerID *int) *phaseTradePool {
 
 	// actionable offers
 	for _, offer := range actionable {
-		options = append(options, offer.RenderForPool(g, lipgloss.NewStyle()))
+		options = append(options, offer.String())
 		snapshot = append(snapshot, offer)
 	}
 
 	// non-actionable offers (strikethrough)
 	for _, offer := range nonActionable {
-		options = append(options, offer.RenderForPool(g, strikethrough))
+		options = append(options, offer.String())
 		snapshot = append(snapshot, offer)
 	}
 
@@ -423,7 +404,8 @@ func newPhaseTradePool(g *Game, playerID *int) *phaseTradePool {
 			playerID: playerID,
 			options:  options,
 		},
-		offersSnapshot: snapshot,
+		offersSnapshot:  snapshot,
+		unavailableFrom: len(actionable),
 	}
 }
 
@@ -458,12 +440,11 @@ func (p *phaseTradePool) confirmCommon() (poolConfirmOutcome, string) {
 		offerer := &p.game.Players[selected.OffererID]
 		acceptor := &p.game.Players[playerID]
 		if selected.executeTrade(playerID, p.game) {
-			p.game.LogAction(fmt.Sprintf("%s traded %s with %s",
-				acceptor.RenderName(), selected.String(), offerer.RenderName()))
+			p.game.LogAction(acceptor, " traded ", selected.String(), " with ", offerer)
 			return poolConfirmExit, "Trade completed successfully!"
 		}
 		// Only reason the trade can fail at this point
-		p.game.LogAction(fmt.Sprintf("%s's offer was a bluff!", offerer.RenderName()))
+		p.game.LogAction(offerer, "'s offer was a bluff!")
 		selected.Status = OfferIsRetracted
 		return poolConfirmExit, "Trade didn't work!"
 	default:
@@ -531,4 +512,18 @@ func (p *phaseTradePool) HelpText() string {
 	default:
 		return "This should be impossible"
 	}
+}
+
+// Keep offer ordering and selection in the phase, and style labels per viewer.
+func (p *phaseTradePool) Menu() RichText {
+	options := make([]RichText, len(p.options))
+	for i, offer := range p.offersSnapshot {
+		if offer == nil {
+			options[i] = plainText("Update")
+			continue
+		}
+		style := lipgloss.NewStyle().Strikethrough(i >= p.unavailableFrom)
+		options[i] = offer.textForPool(p.game, style)
+	}
+	return p.phaseWithOptions.menuOptions(options)
 }

@@ -2,6 +2,7 @@ package game
 
 import (
 	"github.com/VichoReyes/el-poblador/board"
+	"github.com/charmbracelet/lipgloss"
 	"testing"
 )
 
@@ -17,11 +18,11 @@ func TestActionLogBasicFunctionality(t *testing.T) {
 		t.Errorf("Expected 2 actions, got %d", len(game.ActionLog))
 	}
 
-	if game.ActionLog[0] != "Test action 2" {
+	if game.ActionLog[0].String() != "Test action 2" {
 		t.Errorf("Expected first action 'Test action 2' (most recent), got '%s'", game.ActionLog[0])
 	}
 
-	if game.ActionLog[1] != "Test action 1" {
+	if game.ActionLog[1].String() != "Test action 1" {
 		t.Errorf("Expected second action 'Test action 1' (oldest), got '%s'", game.ActionLog[1])
 	}
 }
@@ -40,11 +41,11 @@ func TestActionLogMaxLength(t *testing.T) {
 	}
 
 	// Newest should be at index 0, oldest at index 14
-	if game.ActionLog[0] != "Action 0" {
+	if game.ActionLog[0].String() != "Action 0" {
 		t.Errorf("Expected first action 'Action 0' (most recent), got '%s'", game.ActionLog[0])
 	}
 
-	if game.ActionLog[14] != "Action 6" {
+	if game.ActionLog[14].String() != "Action 6" {
 		t.Errorf("Expected last action 'Action 6' (oldest), got '%s'", game.ActionLog[14])
 	}
 }
@@ -88,7 +89,7 @@ func TestActionLogDevelopmentCardPurchase(t *testing.T) {
 	expectedAction := firstPlayer.Name + " bought a development card"
 	found := false
 	for _, action := range game.ActionLog {
-		if action == expectedAction {
+		if action.String() == expectedAction {
 			found = true
 			break
 		}
@@ -107,7 +108,7 @@ func TestRenderNameMethod(t *testing.T) {
 	player := &game.Players[0]
 
 	// Test that RenderName exists and returns the name (colored or not)
-	renderedName := player.RenderName()
+	renderedName := player.RenderName(lipgloss.DefaultRenderer())
 
 	// The method should at least return the player's name
 	if renderedName != player.Name {
@@ -118,7 +119,7 @@ func TestRenderNameMethod(t *testing.T) {
 	}
 }
 
-func TestActionLogUsesRenderNameInsteadOfPlainName(t *testing.T) {
+func TestActionLogRecordsPlayerName(t *testing.T) {
 	game := &Game{}
 	game.Start([]string{"Alice", "Bob", "Charlie"})
 
@@ -142,7 +143,7 @@ func TestActionLogUsesRenderNameInsteadOfPlainName(t *testing.T) {
 		t.Fatal("Expected at least one action to be logged")
 	}
 
-	loggedAction := game.ActionLog[0]
+	loggedAction := game.ActionLog[0].String()
 
 	// Verify it contains the expected text structure
 	if !containsText(loggedAction, "bought a development card") {

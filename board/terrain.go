@@ -54,7 +54,7 @@ func (tile *Tile) RenderTile(isCursor bool, hasRobber bool, view BoardView) [5]s
 		diceStr = fmt.Sprintf("%d", tile.DiceNumber)
 	}
 
-	style := tile.getTerrainStyle()
+	style := tile.getTerrainStyle(view)
 	if isCursor {
 		cursorBg := lipgloss.AdaptiveColor{Light: "#E0E0E0", Dark: "#424242"}
 		style = style.Background(cursorBg)
@@ -126,7 +126,7 @@ func (tile *Tile) getTerrainDisplay(useEmoji bool) string {
 }
 
 // getTerrainStyle returns the lipgloss style for the terrain
-func (tile *Tile) getTerrainStyle() lipgloss.Style {
+func (tile *Tile) getTerrainStyle(view BoardView) lipgloss.Style {
 	var color lipgloss.AdaptiveColor
 	switch tile.Terrain {
 	case TerrainWood:
@@ -150,7 +150,7 @@ func (tile *Tile) getTerrainStyle() lipgloss.Style {
 	default:
 		color = lipgloss.AdaptiveColor{Light: "#000000", Dark: "#FFFFFF"}
 	}
-	return lipgloss.NewStyle().Foreground(color)
+	return view.newStyle().Foreground(color)
 }
 
 type ResourceType int

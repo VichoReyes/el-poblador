@@ -104,20 +104,20 @@ func TestKnightCardUsage(t *testing.T) {
 
 	// Test that the dice roll phase always shows the knight option
 	dicePhase := PhaseDiceRoll(game)
-	menu := dicePhase.Menu()
+	menu := dicePhase.Menu().String()
 	if !strings.Contains(menu, "Play Knight") {
 		t.Fatal("Dice roll phase should always show Play Knight option")
 	}
 
 	// Test that the idle phase shows the development card option
-	menu = PhaseIdle(game).Menu()
+	menu = PhaseIdle(game).Menu().String()
 	if !strings.Contains(menu, "Play Development Card") {
 		t.Fatal("Idle phase should show Play Development Card option")
 	}
 
 	// Test that the development card phase shows knight options when available
 	devCardPhase := PhasePlayDevelopmentCard(game)
-	menu = devCardPhase.Menu()
+	menu = devCardPhase.Menu().String()
 	if !strings.Contains(menu, "Knight") {
 		t.Fatal("Development card phase should show Knight option when player has knight cards")
 	}

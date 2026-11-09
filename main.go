@@ -12,6 +12,7 @@ import (
 	"github.com/VichoReyes/el-poblador/game"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/wish"
 	"github.com/charmbracelet/wish/activeterm"
 	"github.com/charmbracelet/wish/bubbletea"
@@ -20,6 +21,7 @@ import (
 
 // GameConn is the Bubble tea model for an active game
 type GameConn struct {
+	renderer       *lipgloss.Renderer
 	game           *game.Game
 	width          int // TODO: abstract to ResizableModel
 	height         int
@@ -65,6 +67,7 @@ func (m *GameConn) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *GameConn) View() string {
 	return m.game.Print(game.PrintOptions{
+		Renderer:       m.renderer,
 		Width:          m.width,
 		Height:         m.height,
 		RequestPlayer:  m.userPlayer,

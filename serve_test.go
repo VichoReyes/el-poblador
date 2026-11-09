@@ -40,12 +40,12 @@ func createTestLobby(t *testing.T, session *SessionModel, name string) {
 
 func TestLobbyBoardPreview(t *testing.T) {
 	registry := newLobbyRegistry()
-	host := newSessionModel(registry, "alice", 80, 32)
+	host := newSessionModel(registry, "alice", 80, 32, nil)
 	createTestLobby(t, host, "Plan ahead")
 	lobby := host.lobby
 	generatedBoard := lobby.game.Board
 	preview := lobby.game.PrintBoard(board.BoardView{UseEmoji: true})
-	guest := newSessionModel(registry, "bob", 80, 32)
+	guest := newSessionModel(registry, "bob", 80, 32, nil)
 	navigate(t, guest, tea.KeyEnter)
 
 	for _, session := range []*SessionModel{host, guest} {
@@ -111,7 +111,7 @@ func TestLobbySessionsKeepPlayerNames(t *testing.T) {
 				registry := newLobbyRegistry()
 				sessions := make([]*SessionModel, playerCount)
 				for i := range sessions {
-					sessions[i] = newSessionModel(registry, fmt.Sprintf("name%d", i+1), 80, 32)
+					sessions[i] = newSessionModel(registry, fmt.Sprintf("name%d", i+1), 80, 32, nil)
 					if i == 0 {
 						createTestLobby(t, sessions[i], "Test lobby")
 					} else {
@@ -149,8 +149,8 @@ func TestLobbySessionsKeepPlayerNames(t *testing.T) {
 
 func TestSeparateLobbiesAndCleanup(t *testing.T) {
 	registry := newLobbyRegistry()
-	first := newSessionModel(registry, "alice", 80, 32)
-	second := newSessionModel(registry, "alice", 80, 32)
+	first := newSessionModel(registry, "alice", 80, 32, nil)
+	second := newSessionModel(registry, "alice", 80, 32, nil)
 	createTestLobby(t, first, "First")
 	createTestLobby(t, second, "Second")
 	if first.lobby == second.lobby || &first.lobby.game == &second.lobby.game || first.lobby.game.Board == second.lobby.game.Board {
@@ -158,7 +158,7 @@ func TestSeparateLobbiesAndCleanup(t *testing.T) {
 	}
 
 	for _, name := range []string{"bob", "carol"} {
-		guest := newSessionModel(registry, name, 80, 32)
+		guest := newSessionModel(registry, name, 80, 32, nil)
 		navigate(t, guest, tea.KeyEnter)
 		guest.Update(tea.KeyMsg{Type: tea.KeyEnter})
 		t.Cleanup(guest.Close)
@@ -193,7 +193,7 @@ func TestSeparateLobbiesAndCleanup(t *testing.T) {
 func TestBrowserRefreshPreservesSelectionAndReportsStaleLobby(t *testing.T) {
 	registry := newLobbyRegistry()
 	selected, _ := registry.Create("Bravo", "host")
-	session := newSessionModel(registry, "guest", 80, 32)
+	session := newSessionModel(registry, "guest", 80, 32, nil)
 	registry.Create("Alpha", "other")
 	session.Update(TickMsg{})
 	browser := session.active.(*LobbyBrowserModel)
@@ -214,13 +214,13 @@ func TestBrowserHidesStartedGamesOnEntryAndRefresh(t *testing.T) {
 	registry := newLobbyRegistry()
 	starting := makeTestLobby(t, registry, "Alpha", "alice", "bob", "carol")
 	waiting := makeTestLobby(t, registry, "Bravo", "host")
-	session := newSessionModel(registry, "observer", 80, 32)
+	session := newSessionModel(registry, "observer", 80, 32, nil)
 	session.Update(tea.KeyMsg{Type: tea.KeyDown}) // Keep Bravo selected as Alpha starts.
 	for _, name := range []string{"alice", "bob", "carol"} {
 		starting.toggleReady(name)
 	}
 	session.Update(TickMsg{})
-	fresh := newSessionModel(registry, "new observer", 80, 32)
+	fresh := newSessionModel(registry, "new observer", 80, 32, nil)
 	for _, browser := range []*SessionModel{session, fresh} {
 		items := browser.active.(*LobbyBrowserModel).list.Items()
 		if len(items) != 1 || items[0].(lobbySnapshot).id != waiting.id {
@@ -239,7 +239,7 @@ func TestBrowserHidesStartedGamesOnEntryAndRefresh(t *testing.T) {
 func TestBrowserJoiningJustStartedGameShowsErrorAndRefreshes(t *testing.T) {
 	registry := newLobbyRegistry()
 	lobby := makeTestLobby(t, registry, "Starting", "alice", "bob", "carol")
-	session := newSessionModel(registry, "latecomer", 80, 32)
+	session := newSessionModel(registry, "latecomer", 80, 32, nil)
 	for _, name := range []string{"alice", "bob", "carol"} {
 		lobby.toggleReady(name)
 	}
@@ -258,7 +258,7 @@ func TestBrowserJoiningJustStartedGameShowsErrorAndRefreshes(t *testing.T) {
 
 func TestLobbyNameFormValidationAndCancel(t *testing.T) {
 	registry := newLobbyRegistry()
-	session := newSessionModel(registry, "alice", 80, 32)
+	session := newSessionModel(registry, "alice", 80, 32, nil)
 	navigate(t, session, tea.KeyRunes, 'n')
 	form := session.active.(*CreateLobbyModel)
 	if !form.input.Focused() {
@@ -281,7 +281,7 @@ func TestLobbyNameFormValidationAndCancel(t *testing.T) {
 			t.Errorf("accepted invalid or duplicate lobby name %q", name)
 		}
 	}
-	other := newSessionModel(registry, "other", 80, 32)
+	other := newSessionModel(registry, "other", 80, 32, nil)
 	navigate(t, other, tea.KeyRunes, 'n')
 	other.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("ñuñoa")})
 	navigate(t, other, tea.KeyEnter)
@@ -291,7 +291,7 @@ func TestLobbyNameFormValidationAndCancel(t *testing.T) {
 }
 
 func TestSessionIgnoresUnknownTerminalSize(t *testing.T) {
-	session := newSessionModel(newLobbyRegistry(), "alice", 0, 0)
+	session := newSessionModel(newLobbyRegistry(), "alice", 0, 0, nil)
 	session.Update(tea.WindowSizeMsg{})
 	if session.width != 80 || session.height != 32 || !strings.Contains(session.View(), "Lobbies") {
 		t.Fatal("unknown SSH terminal size replaced the usable fallback dimensions")
@@ -334,7 +334,7 @@ func TestLeavingUnreadySeatStartsReadyPlayers(t *testing.T) {
 	registry := newLobbyRegistry()
 	sessions := make([]*SessionModel, 4)
 	for i := range sessions {
-		sessions[i] = newSessionModel(registry, fmt.Sprintf("name%d", i), 80, 32)
+		sessions[i] = newSessionModel(registry, fmt.Sprintf("name%d", i), 80, 32, nil)
 		if i == 0 {
 			createTestLobby(t, sessions[i], "Ready players")
 		} else {
@@ -360,7 +360,7 @@ func TestConcurrentSessionsStartTogether(t *testing.T) {
 	registry := newLobbyRegistry()
 	sessions := make([]*SessionModel, 4)
 	for i := range sessions {
-		sessions[i] = newSessionModel(registry, fmt.Sprintf("name%d", i), 80, 32)
+		sessions[i] = newSessionModel(registry, fmt.Sprintf("name%d", i), 80, 32, nil)
 		if i == 0 {
 			createTestLobby(t, sessions[i], "Concurrent start")
 		} else {
@@ -395,7 +395,7 @@ func TestQuitBeforePendingGameTransition(t *testing.T) {
 	registry := newLobbyRegistry()
 	sessions := make([]*SessionModel, 3)
 	for i := range sessions {
-		sessions[i] = newSessionModel(registry, fmt.Sprintf("name%d", i), 80, 32)
+		sessions[i] = newSessionModel(registry, fmt.Sprintf("name%d", i), 80, 32, nil)
 		if i == 0 {
 			createTestLobby(t, sessions[i], "Pending transition")
 		} else {

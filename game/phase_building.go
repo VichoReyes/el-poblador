@@ -14,38 +14,38 @@ func PhaseBuilding(game *Game) Phase {
 
 	// Build the list of available building options
 	var options []string
-	strikethrough := strikethroughStyle()
 
 	if player.CanBuildRoad() {
 		options = append(options, fmt.Sprintf("Road - %d", player.RoadsAvailable))
 	} else {
-		options = append(options, strikethrough.Render("Road"))
+		options = append(options, "Road")
 	}
 
 	if player.CanBuildSettlement() {
 		options = append(options, fmt.Sprintf("Settlement - %d", player.SettlementsAvailable))
 	} else {
-		options = append(options, strikethrough.Render("Settlement"))
+		options = append(options, "Settlement")
 	}
 
 	if player.CanBuildCity() {
 		options = append(options, fmt.Sprintf("City - %d", player.CitiesAvailable))
 	} else {
-		options = append(options, strikethrough.Render("City"))
+		options = append(options, "City")
 	}
 
 	if player.CanBuyDevelopmentCard() {
 		options = append(options, "Development Card")
 	} else {
-		options = append(options, strikethrough.Render("Development Card"))
+		options = append(options, "Development Card")
 	}
 
 	options = append(options, "Cancel (or 'esc')")
 
 	return &phaseBuilding{
 		phaseWithOptions: phaseWithOptions{
-			game:    game,
-			options: options,
+			game:     game,
+			options:  options,
+			disabled: []bool{!player.CanBuildRoad(), !player.CanBuildSettlement(), !player.CanBuildCity(), !player.CanBuyDevelopmentCard()},
 		},
 	}
 }
@@ -75,7 +75,7 @@ func (p *phaseBuilding) ConfirmTurn() (Phase, EnterMode) {
 				if card := p.game.DrawDevelopmentCard(); card != nil {
 					player.HiddenDevCards = append(player.HiddenDevCards, *card)
 
-					p.game.LogAction(fmt.Sprintf("%s bought a development card", player.RenderName()))
+					p.game.LogAction(player, " bought a development card")
 
 					// Check for game end after buying development card (in case it's a victory point card)
 					if winner := p.game.CheckGameEnd(); winner != nil {
@@ -133,7 +133,7 @@ func (p *phaseSettlementPlacement) ConfirmTurn() (Phase, EnterMode) {
 
 	p.game.Board.SetSettlement(p.cursorCross, playerId)
 
-	p.game.LogAction(fmt.Sprintf("%s built a settlement", player.RenderName()))
+	p.game.LogAction(player, " built a settlement")
 
 	// Check for game end after building settlement
 	if winner := p.game.CheckGameEnd(); winner != nil {
@@ -162,8 +162,8 @@ func (p *phaseSettlementPlacement) MoveCursor(direction string) {
 	p.cursorCross = dest
 }
 
-func (p *phaseSettlementPlacement) Menu() string {
-	return "Select settlement location on the map"
+func (p *phaseSettlementPlacement) Menu() RichText {
+	return plainText("Select settlement location on the map")
 }
 
 type phaseCityPlacement struct {
@@ -201,7 +201,7 @@ func (p *phaseCityPlacement) ConfirmTurn() (Phase, EnterMode) {
 
 	p.game.Board.UpgradeToCity(p.cursorCross, playerId)
 
-	p.game.LogAction(fmt.Sprintf("%s upgraded to a city", player.RenderName()))
+	p.game.LogAction(player, " upgraded to a city")
 
 	// Check for game end after building city
 	if winner := p.game.CheckGameEnd(); winner != nil {
@@ -230,6 +230,6 @@ func (p *phaseCityPlacement) MoveCursor(direction string) {
 	p.cursorCross = dest
 }
 
-func (p *phaseCityPlacement) Menu() string {
-	return "Select city upgrade location on the map"
+func (p *phaseCityPlacement) Menu() RichText {
+	return plainText("Select city upgrade location on the map")
 }

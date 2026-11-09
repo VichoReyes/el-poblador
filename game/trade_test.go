@@ -1,6 +1,7 @@
 package game
 
 import (
+	"io"
 	"testing"
 
 	"github.com/VichoReyes/el-poblador/board"
@@ -253,7 +254,9 @@ func TestBankTradeCancelFromReceivePhase(t *testing.T) {
 }
 
 func TestRenderForPool(t *testing.T) {
-	lipgloss.SetColorProfile(termenv.ANSI)
+	r := lipgloss.NewRenderer(io.Discard)
+	r.SetColorProfile(termenv.ANSI)
+	r.SetHasDarkBackground(true)
 
 	game := &Game{}
 	game.Start([]string{"p1", "p2", "p3"})
@@ -270,8 +273,8 @@ func TestRenderForPool(t *testing.T) {
 	if ok := game.AddTradeOffer(1, -1, p2Offering, p2Receive0); !ok {
 		t.Fatal("should've been valid offer")
 	}
-	offer0 := game.TradeOffers[0].RenderForPool(game, lipgloss.NewStyle())
-	offer0Strike := game.TradeOffers[0].RenderForPool(game, strikethroughStyle())
+	offer0 := game.TradeOffers[0].textForPool(game, r.NewStyle()).Render(r)
+	offer0Strike := game.TradeOffers[0].textForPool(game, r.NewStyle().Strikethrough(true)).Render(r)
 	if offer0 == offer0Strike {
 		t.Errorf("strikethrough should change the string, but both are: %q", offer0)
 	}
