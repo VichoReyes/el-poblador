@@ -1,9 +1,5 @@
 package game
 
-import (
-	"strings"
-)
-
 // Spectator Phases
 //
 // This file implements the idle phase for non-turn holders (spectators).
@@ -59,15 +55,19 @@ func (p *phaseSpectatorIdle) HelpText() string {
 	return "Waiting for your turn. You can make trade offers."
 }
 
-func (p *phaseSpectatorIdle) Menu() string {
-	paddedOptions := make([]string, len(p.options))
+func (p *phaseSpectatorIdle) Menu() RichText {
+	var menu RichText
 	player := &p.game.Players[p.playerID]
 	for i, option := range p.options {
-		if i == p.selected {
-			paddedOptions[i] = player.Render("> ") + option
-		} else {
-			paddedOptions[i] = "  " + option
+		if i > 0 {
+			menu = append(menu, TextPart{Text: "\n"})
 		}
+		if i == p.selected {
+			menu = append(menu, playerText(player, "> "))
+		} else {
+			menu = append(menu, TextPart{Text: "  "})
+		}
+		menu = append(menu, TextPart{Text: option})
 	}
-	return strings.Join(paddedOptions, "\n")
+	return menu
 }

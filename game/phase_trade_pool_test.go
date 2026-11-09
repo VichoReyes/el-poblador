@@ -28,7 +28,7 @@ func TestPhaseTradePoolEmptyOffers(t *testing.T) {
 		t.Error("HelpText should return a non-empty string")
 	}
 
-	menu := phase.Menu()
+	menu := phase.Menu().String()
 	if menu == "" {
 		t.Error("Menu should return a non-empty string")
 	}

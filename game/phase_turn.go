@@ -95,10 +95,7 @@ func rollDice(game *Game) Phase {
 				resourceParts = append(resourceParts, fmt.Sprintf("%d %s", count, resourceType))
 			}
 
-			game.LogAction(fmt.Sprintf("%s gained %s from dice roll (%d)",
-				game.Players[playerId].RenderName(),
-				strings.Join(resourceParts, ", "),
-				sum))
+			game.LogAction(&game.Players[playerId], " gained ", strings.Join(resourceParts, ", "), " from dice roll (", sum, ")")
 		}
 	}
 	return PhaseIdle(game)

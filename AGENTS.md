@@ -4,6 +4,11 @@ Read [README.md](README.md) before working in this repository. It covers the
 project, running local games, controls, and SSH multiplayer. For deployment work,
 also read [deploy/gcp/README.md](deploy/gcp/README.md).
 
+Keep README.md focused on introducing the project and explaining how to use it;
+it should not become a list of features. Most bug fixes and feature implementations
+should not modify the README at all. Update it only when essential setup or usage
+instructions need to change.
+
 El Poblador is a terminal implementation of Settlers of Catan for 3–4 players,
 built with Go and **Bubble Tea**. Lip Gloss provides terminal styling, Bubbles
 provides UI components, and Wish hosts the multiplayer interface over SSH.
@@ -22,8 +27,8 @@ provides UI components, and Wish hosts the multiplayer interface over SSH.
 The central interfaces and state live in `game/game.go`:
 
 - **`Phase`** represents the turn holder's current interaction. It embeds
-  `PhaseView` (`MoveCursor`, `HelpText`, `Menu`) and adds `BoardCursor` and
-  `ConfirmTurn() (Phase, EnterMode)`. Implementations live in `game/phase_*.go`
+  `PhaseView` (`MoveCursor`, `HelpText() string`, `Menu() RichText`) and adds
+  `BoardCursor` and `ConfirmTurn() (Phase, EnterMode)`. Implementations live in `game/phase_*.go`
   and cover setup, dice rolls, building, trading, the robber, and development cards.
 - **`EnterMode`** controls the phase stack: `EnterPush` adds a nested interaction,
   `EnterReplace` replaces its top, and `EnterReset` replaces the whole stack.
@@ -55,11 +60,22 @@ player colors. Coordinate constructors and neighbor helpers in
 `board/coordinates.go` encode the board's geometry; `PathCoord` connects two
 crossings. `Tile`, `TerrainType`, and `ResourceType` live in `board/terrain.go`.
 
-`board.BoardView` carries transient cursor and emoji preferences. `game.PrintOptions`
-adds terminal dimensions, player perspective, and layout selection. A nil
-`RequestPlayer` follows the turn holder. Gob saves persist exported game state;
+Menus and `Game.ActionLog` share `game.RichText` (`game/rich_text.go`), a slice of
+`TextPart` values containing text and deferred styles. `String()` returns plain
+text; `Render(renderer)` applies styles for the viewer. Keep `HelpText()` plain.
+Do not pre-render ANSI strings into shared menus or logs, or switch the global
+renderer for an SSH session. Each SSH session uses its own renderer from Wish's
+`bubbletea.MakeRenderer`, passed through the game and board view options.
+
+`board.BoardView` carries transient renderer, cursor, and emoji preferences.
+`game.PrintOptions` adds terminal dimensions, player perspective, and layout
+selection. A nil renderer uses the local terminal renderer; a nil `RequestPlayer`
+follows the turn holder. Gob saves persist exported game state;
 phase stacks and view state are not saved. `loadGameState` restores the dice-roll
 phase after decoding.
+
+Save-format stability and compatibility with older saves are deferred to 1.0.
+Avoid adding migration or compatibility machinery during unrelated changes.
 
 ## Bubble Tea and multiplayer
 

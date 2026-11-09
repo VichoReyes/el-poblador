@@ -37,14 +37,14 @@ func renderCrossing(board *Board, lines []strings.Builder, coord CrossCoord, vie
 	hasCursor := view.CrossCursor != nil && *view.CrossCursor == coord
 	if hasCursor {
 		cursorColor := lipgloss.AdaptiveColor{Light: "#0277BD", Dark: "#4FC3F7"}
-		style := lipgloss.NewStyle().Foreground(cursorColor).Blink(true)
+		style := view.newStyle().Foreground(cursorColor).Blink(true)
 		lines[midLine].WriteString(style.Render(" ○ "))
 	} else if hasSettlement {
 		_, isCity := board.CityUpgrades[coord]
 		if isCity {
-			lines[midLine].WriteString(renderPlayerContent(board.PlayerColors, settlementOwner, "███"))
+			lines[midLine].WriteString(renderPlayerContent(board.PlayerColors, settlementOwner, "███", view))
 		} else {
-			lines[midLine].WriteString(renderPlayerContent(board.PlayerColors, settlementOwner, "▲▲▲"))
+			lines[midLine].WriteString(renderPlayerContent(board.PlayerColors, settlementOwner, "▲▲▲", view))
 		}
 	} else {
 		lines[midLine].WriteString("   ")
@@ -57,8 +57,8 @@ func renderCrossing(board *Board, lines []strings.Builder, coord CrossCoord, vie
 			path := NewPathCoord(coord, up)
 			roadOwner, hasRoad := board.Roads[path]
 			if hasRoad {
-				lines[midLine-2].WriteString(renderPlayerContent(board.PlayerColors, roadOwner, "//"))
-				lines[midLine-1].WriteString(renderPlayerContent(board.PlayerColors, roadOwner, "//"))
+				lines[midLine-2].WriteString(renderPlayerContent(board.PlayerColors, roadOwner, "//", view))
+				lines[midLine-1].WriteString(renderPlayerContent(board.PlayerColors, roadOwner, "//", view))
 			} else {
 				lines[midLine-2].WriteString("  ")
 				lines[midLine-1].WriteString("  ")
@@ -69,8 +69,8 @@ func renderCrossing(board *Board, lines []strings.Builder, coord CrossCoord, vie
 			path := NewPathCoord(coord, down)
 			roadOwner, hasRoad := board.Roads[path]
 			if hasRoad {
-				lines[midLine+1].WriteString(renderPlayerContent(board.PlayerColors, roadOwner, "\\\\"))
-				lines[midLine+2].WriteString(renderPlayerContent(board.PlayerColors, roadOwner, "\\\\"))
+				lines[midLine+1].WriteString(renderPlayerContent(board.PlayerColors, roadOwner, "\\\\", view))
+				lines[midLine+2].WriteString(renderPlayerContent(board.PlayerColors, roadOwner, "\\\\", view))
 			} else {
 				lines[midLine+1].WriteString("  ")
 				lines[midLine+2].WriteString("  ")
@@ -96,7 +96,7 @@ func renderCrossing(board *Board, lines []strings.Builder, coord CrossCoord, vie
 		pathCoord := NewPathCoord(coord, right)
 		roadOwner, hasRoad := board.Roads[pathCoord]
 		if hasRoad {
-			lines[midLine].WriteString(renderPlayerContent(board.PlayerColors, roadOwner, "===="))
+			lines[midLine].WriteString(renderPlayerContent(board.PlayerColors, roadOwner, "====", view))
 		} else {
 			lines[midLine].WriteString("    ")
 		}
@@ -104,9 +104,9 @@ func renderCrossing(board *Board, lines []strings.Builder, coord CrossCoord, vie
 }
 
 // renderPlayerContent applies player color to content string
-func renderPlayerContent(playerColors map[int]lipgloss.AdaptiveColor, playerId int, content string) string {
+func renderPlayerContent(playerColors map[int]lipgloss.AdaptiveColor, playerId int, content string, view BoardView) string {
 	if color, ok := playerColors[playerId]; ok {
-		style := lipgloss.NewStyle().Foreground(color)
+		style := view.newStyle().Foreground(color)
 		return style.Render(content)
 	}
 	return content

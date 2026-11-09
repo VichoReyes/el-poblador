@@ -6,6 +6,7 @@ import (
 
 	"github.com/VichoReyes/el-poblador/game"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	"github.com/charmbracelet/wish/bubbletea"
@@ -15,7 +16,7 @@ const tickPeriod = 200 * time.Millisecond
 
 func dummyHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 	pty, _, _ := s.Pty()
-	conn := &GameConn{width: pty.Window.Width, height: pty.Window.Height, game: &game.Game{}}
+	conn := &GameConn{renderer: bubbletea.MakeRenderer(s), width: pty.Window.Width, height: pty.Window.Height, game: &game.Game{}}
 	conn.game.Start([]string{"a", "b", "c"})
 	return conn, []tea.ProgramOption{tea.WithAltScreen()}
 }
@@ -31,7 +32,7 @@ func multiplayerMiddleware(registry *lobbyRegistry) wish.Middleware {
 	return func(next ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
 			pty, _, _ := s.Pty()
-			model := newSessionModel(registry, s.User(), pty.Window.Width, pty.Window.Height)
+			model := newSessionModel(registry, s.User(), pty.Window.Width, pty.Window.Height, bubbletea.MakeRenderer(s))
 			defer model.Close()
 			bubbletea.Middleware(func(ssh.Session) (tea.Model, []tea.ProgramOption) {
 				return model, []tea.ProgramOption{tea.WithAltScreen()}
@@ -50,6 +51,7 @@ type submitLobbyMsg struct{ name string }
 // Update and View run on Bubble Tea's event loop. Close runs there on Ctrl+C,
 // or after the program stops; it must not run concurrently with that loop.
 type SessionModel struct {
+	renderer      *lipgloss.Renderer
 	registry      *lobbyRegistry
 	username      string
 	width, height int
@@ -58,7 +60,10 @@ type SessionModel struct {
 	closed        bool
 }
 
-func newSessionModel(registry *lobbyRegistry, username string, width, height int) *SessionModel {
+func newSessionModel(registry *lobbyRegistry, username string, width, height int, r *lipgloss.Renderer) *SessionModel {
+	if r == nil {
+		r = lipgloss.DefaultRenderer()
+	}
 	if width <= 0 {
 		width = 80
 	}
@@ -66,8 +71,9 @@ func newSessionModel(registry *lobbyRegistry, username string, width, height int
 		height = 32
 	}
 	return &SessionModel{
+		renderer: r,
 		registry: registry, username: username, width: width, height: height,
-		active: newLobbyBrowserModel(registry.List(), width, height),
+		active: newLobbyBrowserModel(registry.List(), width, height, r),
 	}
 }
 
@@ -98,7 +104,7 @@ func (m *SessionModel) enterLobby(lobby *lobbyCommon) tea.Cmd {
 	log.Printf("player joined lobby: lobby=%q id=%d player=%q", lobby.name, lobby.id, m.username)
 	return m.activate(&lobbyRef{
 		lobby: lobby, myName: m.username,
-		gameConn: &GameConn{game: &lobby.game},
+		gameConn: &GameConn{game: &lobby.game, renderer: m.renderer},
 	})
 }
 
@@ -125,7 +131,7 @@ func (m *SessionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case createLobbyMsg:
 		if _, ok := m.active.(*LobbyBrowserModel); ok {
-			return m, m.activate(newCreateLobbyModel())
+			return m, m.activate(newCreateLobbyModel(m.renderer))
 		}
 		return m, nil
 	case submitLobbyMsg:
@@ -155,7 +161,7 @@ func (m *SessionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.active.(type) {
 		case *CreateLobbyModel, *lobbyRef:
 			m.leaveLobby()
-			return m, m.activate(newLobbyBrowserModel(m.registry.List(), m.width, m.height))
+			return m, m.activate(newLobbyBrowserModel(m.registry.List(), m.width, m.height, m.renderer))
 		}
 		return m, nil
 	}

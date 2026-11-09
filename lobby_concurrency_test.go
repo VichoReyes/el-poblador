@@ -205,7 +205,7 @@ func TestLobbyConcurrentSessionsBrowsersAndRegistryChurn(t *testing.T) {
 	for group := 0; group < 4; group++ {
 		var id uint64
 		for player := 0; player < 4; player++ {
-			session := newSessionModel(registry, fmt.Sprintf("player%d", player), 80, 32)
+			session := newSessionModel(registry, fmt.Sprintf("player%d", player), 80, 32, nil)
 			if player == 0 {
 				createTestLobby(t, session, fmt.Sprintf("Game %d", group))
 				id = session.lobby.id
@@ -220,7 +220,7 @@ func TestLobbyConcurrentSessionsBrowsersAndRegistryChurn(t *testing.T) {
 		var workers []func()
 		for i := 0; i < 4; i++ {
 			workers = append(workers, func() {
-				browser := newSessionModel(registry, fmt.Sprintf("browser%d", i), 80, 32)
+				browser := newSessionModel(registry, fmt.Sprintf("browser%d", i), 80, 32, nil)
 				for j := 0; j < 24; j++ {
 					browser.Update(TickMsg{})
 					browser.View()

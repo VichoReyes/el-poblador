@@ -42,7 +42,7 @@ func (p *phaseInitialSettlements) ConfirmTurn() (Phase, EnterMode) {
 	player := &p.game.Players[p.game.PlayerTurn]
 
 	if player.SettlementsAvailable <= 0 {
-		p.game.LogAction(fmt.Sprintf("Player %s has no settlements available during initial phase! Skipping...", player.RenderName()))
+		p.game.LogAction("Player ", player, " has no settlements available during initial phase! Skipping...")
 		return nextInitialPhase(p.game, p.isFirstPair), EnterReset
 	}
 
@@ -75,7 +75,7 @@ func (p *phaseInitialSettlements) ConfirmTurn() (Phase, EnterMode) {
 				resourceParts = append(resourceParts, fmt.Sprintf("%d %s", count, resourceType))
 			}
 
-			p.game.LogAction(fmt.Sprintf("%s gained %s from initial settlement", player.RenderName(), strings.Join(resourceParts, ", ")))
+			p.game.LogAction(player, " gained ", strings.Join(resourceParts, ", "), " from initial settlement")
 		}
 	}
 
@@ -112,8 +112,8 @@ func (p *phaseInitialSettlements) MoveCursor(direction string) {
 	p.cursorCross = dest
 }
 
-func (p *phaseInitialSettlements) Menu() string {
-	return "Select initial settlement location on the map"
+func (p *phaseInitialSettlements) Menu() RichText {
+	return plainText("Select initial settlement location on the map")
 }
 
 type phaseInitialRoad struct {
@@ -168,6 +168,6 @@ func (p *phaseInitialRoad) MoveCursor(direction string) {
 	}
 }
 
-func (p *phaseInitialRoad) Menu() string {
-	return "Select initial road direction on the map"
+func (p *phaseInitialRoad) Menu() RichText {
+	return plainText("Select initial road direction on the map")
 }

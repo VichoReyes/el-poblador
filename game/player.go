@@ -214,11 +214,11 @@ func (p *Player) VictoryPoints(game *Game) int {
 	return points
 }
 
-func (p *Player) Render(s string) string {
-	style := lipgloss.NewStyle().Foreground(p.Color)
+func (p *Player) Render(s string, r *lipgloss.Renderer) string {
+	style := r.NewStyle().Foreground(p.Color)
 	return style.Render(s)
 }
 
-func (p *Player) RenderName() string {
-	return p.Render(p.Name)
+func (p *Player) RenderName(r *lipgloss.Renderer) string {
+	return p.Render(p.Name, r)
 }

@@ -1,10 +1,8 @@
 package game
 
 import (
-	"fmt"
 	"github.com/VichoReyes/el-poblador/board"
 	"math/rand/v2"
-	"strings"
 )
 
 type phasePlaceRobber struct {
@@ -51,7 +49,7 @@ func (p *phasePlaceRobber) ConfirmTurn() (Phase, EnterMode) {
 	playerIds := p.game.Board.PlaceRobber(p.tileCoord)
 
 	currentPlayer := &p.game.Players[p.game.PlayerTurn]
-	p.game.LogAction(fmt.Sprintf("%s moved the robber", currentPlayer.RenderName()))
+	p.game.LogAction(currentPlayer, " moved the robber")
 
 	var stealablePlayers []Player
 	for _, playerId := range playerIds {
@@ -109,23 +107,26 @@ func (p *phaseStealCard) ConfirmTurn() (Phase, EnterMode) {
 		p.game.Players[p.game.PlayerTurn].AddResource(selectedResource)
 
 		currentPlayer := &p.game.Players[p.game.PlayerTurn]
-		p.game.LogAction(fmt.Sprintf("%s stole a card from %s", currentPlayer.RenderName(), player.RenderName()))
+		p.game.LogAction(currentPlayer, " stole a card from ", &player)
 	}
 	return p.continuation, EnterReset
 }
 
-func (p *phaseStealCard) Menu() string {
-	var paddedOptions []string
+func (p *phaseStealCard) Menu() RichText {
+	var menu RichText
 	for i, player := range p.stealablePlayers {
+		if i > 0 {
+			menu = append(menu, TextPart{Text: "\n"})
+		}
 		if i == p.selected {
-			paddedOptions = append(paddedOptions, "> "+player.Render(player.Name))
+			menu = append(menu, TextPart{Text: "> "}, playerText(&player, player.Name))
 		} else {
-			paddedOptions = append(paddedOptions, player.Render(" "+player.Name))
+			menu = append(menu, playerText(&player, " "+player.Name))
 		}
 	}
-	return strings.Join(paddedOptions, "\n")
+	return menu
 }
 
-func (p *phasePlaceRobber) Menu() string {
-	return "Select robber destination tile on the map"
+func (p *phasePlaceRobber) Menu() RichText {
+	return plainText("Select robber destination tile on the map")
 }

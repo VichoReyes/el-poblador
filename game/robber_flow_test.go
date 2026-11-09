@@ -113,6 +113,9 @@ func TestKnightPlayLeadsToRobberPlacementAndPotentialSteal(t *testing.T) {
 	if !(afterVictim == beforeVictim-1 && afterThief == beforeThief+1) {
 		t.Fatalf("expected thief +1 and victim -1 resources, got thief %d->%d, victim %d->%d", beforeThief, afterThief, beforeVictim, afterVictim)
 	}
+	if want := current.Name + " stole a card from " + g.Players[victimIdx].Name; g.ActionLog[0].String() != want {
+		t.Fatalf("robber log = %q, want %q", g.ActionLog[0], want)
+	}
 }
 
 func TestMoveTileCursorHelpers(t *testing.T) {

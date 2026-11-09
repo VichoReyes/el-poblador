@@ -90,9 +90,9 @@ func (t *TradeOffer) String() string {
 	return fmt.Sprintf("%s for %s", offering, requesting)
 }
 
-// RenderForPool creates a rich string representation for the trade pool UI
+// textForPool creates a rich text representation for the trade pool UI
 // including offerer name (colored), target information, and offer details.
-func (t *TradeOffer) RenderForPool(g *Game, style lipgloss.Style) string {
+func (t *TradeOffer) textForPool(g *Game, style lipgloss.Style) RichText {
 	offerer := &g.Players[t.OffererID]
 	offerStr := t.String()
 
@@ -103,8 +103,7 @@ func (t *TradeOffer) RenderForPool(g *Game, style lipgloss.Style) string {
 		targetStr = g.Players[t.TargetID].Name
 	}
 
-	return fmt.Sprintf("%s → %s: %s",
-		offerer.RenderName(), targetStr, style.Render(offerStr))
+	return RichText{playerText(offerer, offerer.Name), {Text: " → " + targetStr + ": "}, {Text: offerStr, style: style}}
 }
 
 // Can a player take a given offer?

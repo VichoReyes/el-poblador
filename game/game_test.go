@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 func TestInitialSettlementsRender(t *testing.T) {
@@ -14,7 +16,7 @@ func TestInitialSettlementsRender(t *testing.T) {
 
 	// 2 rounds of placing settlements and roads
 	for i := 0; i < 2*len(game.Players); i++ {
-		help := game.helpText(100, game.PlayerTurn)
+		help := game.helpText(100, game.PlayerTurn, lipgloss.DefaultRenderer())
 		expectedTurn := game.Players[expectedTurns[i]].Name
 		if !strings.Contains(help, expectedTurn) {
 			t.Fatalf("Help text '%s' does not contain expected turn '%s'. Iteration %d", help, expectedTurn, i)

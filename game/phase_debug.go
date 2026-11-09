@@ -33,8 +33,8 @@ func (p *phaseDebugTiles) HelpText() string {
 	return fmt.Sprintf("Tile x=%v, y=%v", p.tileCoord.X, p.tileCoord.Y)
 }
 
-func (p *phaseDebugTiles) Menu() string {
-	return p.HelpText()
+func (p *phaseDebugTiles) Menu() RichText {
+	return plainText(p.HelpText())
 }
 
 func (p *phaseDebugTiles) ConfirmTurn() (Phase, EnterMode) {
@@ -69,8 +69,8 @@ func (p *phaseDebugCross) HelpText() string {
 	return fmt.Sprintf("Crossing x=%v, y=%v", p.crossCoord.X, p.crossCoord.Y)
 }
 
-func (p *phaseDebugCross) Menu() string {
-	return p.HelpText()
+func (p *phaseDebugCross) Menu() RichText {
+	return plainText(p.HelpText())
 }
 
 func (p *phaseDebugCross) ConfirmTurn() (Phase, EnterMode) {

@@ -1,9 +1,6 @@
 package game
 
-import (
-	"fmt"
-	"strings"
-)
+import "fmt"
 
 type phaseGameEnd struct {
 	game   *Game
@@ -30,25 +27,20 @@ func (p *phaseGameEnd) BoardCursor() interface{} {
 	return nil
 }
 
-func (p *phaseGameEnd) Menu() string {
-	lines := []string{
-		fmt.Sprintf("%s WINS!", p.winner.RenderName()),
-		"",
-		"Final Scores:",
-	}
-
-	for _, player := range p.game.Players {
+func (p *phaseGameEnd) Menu() RichText {
+	menu := RichText{playerText(p.winner, p.winner.Name), {Text: " WINS!\n\nFinal Scores:"}}
+	for i := range p.game.Players {
+		player := &p.game.Players[i]
 		points := player.VictoryPoints(p.game)
 		marker := "  "
-		if &player == p.winner {
+		if player == p.winner {
 			marker = "🏆"
 		}
-		lines = append(lines, fmt.Sprintf("%s %s: %d points", marker, player.Render(player.Name), points))
+		menu = append(menu, TextPart{Text: "\n" + marker + " "}, playerText(player, player.Name), TextPart{Text: fmt.Sprintf(": %d points", points)})
 	}
-
-	return strings.Join(lines, "\n")
+	return menu
 }
 
 func (p *phaseGameEnd) HelpText() string {
-	return fmt.Sprintf("Game complete! %s reached 10 victory points!", p.winner.RenderName())
+	return fmt.Sprintf("Game complete! %s reached 10 victory points!", p.winner.Name)
 }

@@ -78,8 +78,8 @@ func (p *phaseRoadStart) MoveCursor(direction string) {
 	p.cursorCross = dest
 }
 
-func (p *phaseRoadStart) Menu() string {
-	return "Select road starting point on the map"
+func (p *phaseRoadStart) Menu() RichText {
+	return plainText("Select road starting point on the map")
 }
 
 type phaseRoadEnd struct {
@@ -138,9 +138,9 @@ func (p *phaseRoadEnd) ConfirmTurn() (Phase, EnterMode) {
 	p.game.Board.SetRoad(pathCoord, playerId)
 
 	if p.isFree {
-		p.game.LogAction(fmt.Sprintf("%s built a free road", player.RenderName()))
+		p.game.LogAction(player, " built a free road")
 	} else {
-		p.game.LogAction(fmt.Sprintf("%s built a road", player.RenderName()))
+		p.game.LogAction(player, " built a road")
 	}
 
 	return p.continuation, EnterReset
@@ -182,6 +182,6 @@ func (p *phaseRoadEnd) MoveCursor(direction string) {
 	}
 }
 
-func (p *phaseRoadEnd) Menu() string {
-	return "Select road ending point on the map"
+func (p *phaseRoadEnd) Menu() RichText {
+	return plainText("Select road ending point on the map")
 }
