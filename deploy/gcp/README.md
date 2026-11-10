@@ -1,11 +1,11 @@
 # Google cloud deployment
 
-The game runs on a single pay-as-you-go `e2-micro` VM in project `el-poblador`,
-zone `southamerica-west1-a`, with a 10 GB standard persistent boot disk. Its
-reserved Standard Tier IPv4 address is `34.0.59.165` (`el-poblador-ip`).
+The game runs on a single non-preemptible `e2-micro` VM in project `el-poblador`,
+zone `us-west1-b` (Oregon), with a 10 GB standard persistent boot disk. Its
+reserved Standard Tier IPv4 address is `35.212.215.46` (`el-poblador-ip`).
 
-The custom VPC `el-poblador` contains subnet `el-poblador-santiago`
-(`10.42.0.0/24`). Firewall rule `el-poblador-game` allows public TCP port 2222;
+The custom VPC `el-poblador` contains subnet `el-poblador-oregon`
+(`10.43.0.0/24`). Firewall rule `el-poblador-game` allows public TCP port 2222;
 `el-poblador-admin-iap` allows TCP port 22 only from the IAP range
 `35.235.240.0/20`. Both target VMs tagged `el-poblador`. The VM has no service
 account. The game runs as an unprivileged system user under systemd and starts
@@ -14,8 +14,22 @@ automatically at boot.
 Connect with:
 
 ```sh
-ssh -p 2222 yourname@el-poblador.vichoreyes.cl
+ssh -p 2222 yourname@catan.vichoreyes.cl
 ```
+
+## Costs
+
+Oregon is eligible for the [Compute Engine Free Tier](https://cloud.google.com/free/docs/free-cloud-features#compute).
+The allowance covers one month's worth of non-preemptible `e2-micro` usage and
+30 GB-months of standard persistent disk, shared across eligible regions and
+projects on the billing account. This deployment uses one VM and a 10 GB disk;
+other usage on the same billing account can consume those allowances.
+
+The deployment is not entirely free: the public IPv4 address costs
+[$0.005/hour](https://cloud.google.com/vpc/network-pricing#ipaddress)
+(about US$3.65 for 730 hours). Network traffic beyond the applicable free
+allowances is also billed. The DNS record is DNS-only because players connect
+directly over SSH on port 2222.
 
 ## Administration
 
@@ -24,7 +38,7 @@ Compute Engine and IAP permissions in the project.
 
 ```sh
 gcloud compute ssh el-poblador --project=el-poblador \
-  --zone=southamerica-west1-a --tunnel-through-iap
+  --zone=us-west1-b --tunnel-through-iap
 ```
 
 On the VM:
@@ -51,9 +65,9 @@ payload_dir=$(mktemp -d)
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o "$payload_dir/el-poblador" .
 cp deploy/gcp/el-poblador.service deploy/gcp/install.sh "$payload_dir/"
 gcloud compute scp --recurse "$payload_dir" el-poblador:~/el-poblador-update \
-  --project=el-poblador --zone=southamerica-west1-a --tunnel-through-iap
+  --project=el-poblador --zone=us-west1-b --tunnel-through-iap
 gcloud compute ssh el-poblador --project=el-poblador \
-  --zone=southamerica-west1-a --tunnel-through-iap \
+  --zone=us-west1-b --tunnel-through-iap \
   --command='sudo sh ~/el-poblador-update/install.sh ~/el-poblador-update && rm -rf ~/el-poblador-update'
 rm -r "$payload_dir"
 ```
@@ -70,15 +84,15 @@ save anything you need from the VM, then run the following destructive commands:
 
 ```sh
 gcloud compute instances delete el-poblador --project=el-poblador \
-  --zone=southamerica-west1-a --delete-disks=all
+  --zone=us-west1-b --delete-disks=all
 gcloud compute addresses delete el-poblador-ip --project=el-poblador \
-  --region=southamerica-west1
+  --region=us-west1
 gcloud compute firewall-rules delete el-poblador-game el-poblador-admin-iap \
   --project=el-poblador
-gcloud compute networks subnets delete el-poblador-santiago \
-  --project=el-poblador --region=southamerica-west1
+gcloud compute networks subnets delete el-poblador-oregon \
+  --project=el-poblador --region=us-west1
 gcloud compute networks delete el-poblador --project=el-poblador
 ```
 
-Remove the Cloudflare `el-poblador` DNS record as well. These commands leave the
+Remove the Cloudflare `catan` DNS record as well. These commands leave the
 project and its pre-existing default network intact.

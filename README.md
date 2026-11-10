@@ -43,7 +43,7 @@ go run . load <savefile>
 There's a hosted version, so you only need to connect to see players.
 
 ```bash
-$ ssh el-poblador.vichoreyes.cl -p 2222  # to see open lobbies
+$ ssh catan.vichoreyes.cl -p 2222  # to see open lobbies
 ```
 
 It's on GCP, as documented on
