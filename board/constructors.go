@@ -103,6 +103,7 @@ func NewLegalBoard(playerColors map[int]lipgloss.AdaptiveColor) *Board {
 	})
 	board := &Board{
 		Tiles:        make(map[TileCoord]Tile),
+		Ports:        standardPorts(),
 		Roads:        make(map[PathCoord]int),
 		Settlements:  make(map[CrossCoord]int),
 		CityUpgrades: make(map[CrossCoord]int),
