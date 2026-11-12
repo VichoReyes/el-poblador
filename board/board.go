@@ -9,6 +9,8 @@ import (
 // Board represents the game board
 type Board struct {
 	Tiles map[TileCoord]Tile
+	// Ports occupy coastal paths and serve both endpoints. ResourceInvalid is a generic port.
+	Ports map[PathCoord]ResourceType
 	// Roads and Settlements are indexed by player id
 	Roads        map[PathCoord]int
 	Settlements  map[CrossCoord]int
