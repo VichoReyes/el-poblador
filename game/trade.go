@@ -8,6 +8,18 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// bankTradeRatio returns the player's best rate for giving this resource to the
+// bank. Access is derived from the current board, including newly built ports.
+func (g *Game) bankTradeRatio(playerID int, resource board.ResourceType) int {
+	if g.Board.HasPort(playerID, resource) {
+		return 2
+	}
+	if g.Board.HasPort(playerID, board.ResourceInvalid) {
+		return 3
+	}
+	return 4
+}
+
 // OfferStatus represents the state of a trade offer.
 type OfferStatus int
 type CanTakeOffer int

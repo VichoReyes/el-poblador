@@ -46,3 +46,48 @@ func coastalTiles(path PathCoord) []TileCoord {
 	}
 	return tiles
 }
+
+func TestHasPort(t *testing.T) {
+	path := NewPathCoord(CrossCoord{0, 2}, CrossCoord{1, 2})
+	tests := []struct {
+		name       string
+		settlement CrossCoord
+		owner      int
+		city, road bool
+		want       bool
+	}{
+		{name: "unclaimed"},
+		{name: "first endpoint", settlement: path.From, want: true},
+		{name: "second endpoint", settlement: path.To, want: true},
+		{name: "opponent", settlement: path.From, owner: 1},
+		{name: "city", settlement: path.To, city: true, want: true},
+		{name: "opponent city", settlement: path.To, owner: 1, city: true},
+		{name: "road only", road: true},
+		{name: "nearby settlement", settlement: CrossCoord{0, 3}},
+	}
+	for _, resource := range []ResourceType{ResourceInvalid, ResourceWood} {
+		for _, tt := range tests {
+			t.Run(resource.String()+"/"+tt.name, func(t *testing.T) {
+				b := NewDesertBoard()
+				b.Ports = map[PathCoord]ResourceType{path: resource}
+				if tt.settlement.IsInBounds() {
+					if !b.SetSettlement(tt.settlement, tt.owner) {
+						t.Fatal("could not place test settlement")
+					}
+					if tt.city && !b.UpgradeToCity(tt.settlement, tt.owner) {
+						t.Fatal("could not upgrade test city")
+					}
+				}
+				if tt.road {
+					b.SetRoad(path, 0)
+				}
+				if got := b.HasPort(0, resource); got != tt.want {
+					t.Errorf("HasPort = %t, want %t", got, tt.want)
+				}
+				if b.HasPort(0, ResourceBrick) {
+					t.Fatal("port granted access to a different port type")
+				}
+			})
+		}
+	}
+}
