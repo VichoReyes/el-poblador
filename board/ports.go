@@ -1,5 +1,17 @@
 package board
 
+// HasPort reports whether the player has a settlement or city at either end of
+// a port of this type. ResourceInvalid selects generic ports. City upgrades keep
+// their settlement entry, so both kinds of buildings use the same ownership map.
+func (b *Board) HasPort(playerID int, resource ResourceType) bool {
+	for path, portResource := range b.Ports {
+		if portResource == resource && (b.HasSettlementAt(path.From, playerID) || b.HasSettlementAt(path.To, playerID)) {
+			return true
+		}
+	}
+	return false
+}
+
 // standardPorts places nine ports around the coast, with one or two unused
 // coastal paths between them. There are four generic ports and one per resource.
 func standardPorts() map[PathCoord]ResourceType {
