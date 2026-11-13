@@ -52,7 +52,7 @@ func (p *phaseDiceRoll) ConfirmTurn() (Phase, EnterMode) {
 		return p, EnterReplace
 	case 2:
 		// Save & Quit
-		if err := saveGameState(p.game); err != nil {
+		if err := p.game.save(); err != nil {
 			p.invalid = fmt.Sprintf("Save failed: %v", err)
 			return p, EnterReplace
 		}
@@ -176,4 +176,15 @@ func saveGameState(g *Game) error {
 		return fmt.Errorf("write failed: %w", err)
 	}
 	return nil
+}
+
+func (g *Game) save() error {
+	if g.saveHandler == nil {
+		return saveGameState(g)
+	}
+	notice, err := g.saveHandler(g)
+	if err == nil {
+		g.saveNotice = notice
+	}
+	return err
 }

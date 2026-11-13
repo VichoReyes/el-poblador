@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -36,6 +37,21 @@ func MultiplayerMiddleware() wish.Middleware {
 		return func(s ssh.Session) {
 			pty, _, _ := s.Pty()
 			model := newSessionModel(registry, s.User(), pty.Window.Width, pty.Window.Height, bubbletea.MakeRenderer(s))
+			args := s.Command()
+			if len(args) != 0 {
+				if len(args) != 2 || args[0] != "resume" {
+					fmt.Fprintln(s.Stderr(), "Usage: ssh -t -p <port> <username>@<host> resume <code>")
+					s.Exit(1)
+					return
+				}
+				lobby, err := registry.Resume(args[1], s.User())
+				if err != nil {
+					fmt.Fprintln(s.Stderr(), err)
+					s.Exit(1)
+					return
+				}
+				model.enterLobby(lobby)
+			}
 			defer model.Close()
 			bubbletea.Middleware(func(ssh.Session) (tea.Model, []tea.ProgramOption) {
 				return model, []tea.ProgramOption{tea.WithAltScreen()}

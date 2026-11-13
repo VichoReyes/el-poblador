@@ -53,8 +53,21 @@ Connections open a lobby browser. Use the arrow keys to select a lobby and
 Enter to join, or press `n` to create a named lobby.
 In a lobby, press Enter to signal you're ready and want the game to start (if the lobby has 3 players all ready, it won't wait for a 4th one).
 
-Rejoining games already in
-progress is not supported yet.
+Choosing **Save & Quit** pauses the shared game and shows every connected player
+a save code. Keep that code and reconnect with your original SSH username:
+
+```bash
+ssh -t -p 2222 yourname@catan.vichoreyes.cl resume YOUR_SAVE_CODE
+```
+
+Everyone uses the same code. The game resumes once all original players have
+connected and marked themselves ready. Saves expire 30 days after saving.
+Rejoining an unsaved game already in progress is not supported yet.
+
+Self-hosted servers keep snapshots in `saves/` under their working directory,
+with a 64 MiB total limit and a 1 MiB limit per save. Saving again replaces the
+same game's snapshot and renews its expiry. Expired saves are removed on the
+next save; if storage is full or a write fails, the game stays open.
 
 ### Self host
 

@@ -187,8 +187,12 @@ func (m *lobbyRef) View() string {
 		}
 		lines = append(lines, fmt.Sprintf("%s [%s]", name, ready))
 	}
+	requirement := "3–4 players required; the game starts when everyone is ready."
+	if m.lobby.resuming {
+		requirement = fmt.Sprintf("All %d original players must return and be ready.", len(m.lobby.seats))
+	}
 	m.lobby.m.RUnlock()
-	lines = append(lines, "", "3–4 players required; the game starts when everyone is ready.",
+	lines = append(lines, "", requirement,
 		"Enter: toggle ready · Esc: leave · Ctrl+C: quit")
 	info := strings.Join(lines, "\n")
 	r := m.gameConn.renderer

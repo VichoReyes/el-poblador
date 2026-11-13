@@ -35,7 +35,7 @@ func (m *GameConn) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.game.MoveCursor(msg.String(), m.userPlayer)
 		case "enter":
 			m.game.ConfirmAction(m.userPlayer)
-			if m.game.ShouldQuit() {
+			if m.game.ShouldQuit() && m.game.SaveNotice() == "" {
 				return m, tea.Quit
 			}
 		case "esc":
@@ -53,6 +53,9 @@ func (m *GameConn) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *GameConn) View() string {
+	if notice := m.game.SaveNotice(); notice != "" {
+		return notice
+	}
 	return m.game.Print(game.PrintOptions{
 		Renderer:       m.renderer,
 		Width:          m.width,
