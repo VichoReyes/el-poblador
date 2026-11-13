@@ -6,11 +6,11 @@ A terminal-based implementation of Settlers of Catan in Go.
 
 ![game screenshot](screenshot.jpg)
 
+**TLDR:** To play online, run `ssh catan.vichoreyes.cl -p 2222`
+
 ## Installation
 
 Download the latest release for your platform from [GitHub Releases](https://github.com/VichoReyes/el-poblador/releases/latest). Alternatively, you can run `go install github.com/VichoReyes/el-poblador@main`.
-
-Use `@main` when installing with Go until a release is tagged with the GitHub module path. The installed binary is named `el-poblador`.
 
 Another option is cloning the repo and building from [source](https://github.com/VichoReyes/el-poblador). Or making an AUR package. Go wild.
 
@@ -34,8 +34,9 @@ go run . load <savefile>
 - Arrow keys: Move cursor
 - Enter: Confirm action
 - Esc: Cancel action (not always available)
-- 1-4: Switch to specific player's perspective
-- 0: Switch back to current turn holder's perspective
+- e: **toggle emojis** on/off, because they may break alignment on some terminal emulators.
+- 1-4: Switch to specific player's perspective (only local play)
+- 0: Switch back to current turn holder's perspective (only local play)
 - Ctrl+C: Quit game without saving
 
 ## Online Multiplayer
@@ -49,25 +50,13 @@ $ ssh catan.vichoreyes.cl -p 2222  # to see open lobbies
 It's on GCP, as documented on
 [the deployment guide](deploy/gcp/README.md).
 
-Connections open a lobby browser. Use the arrow keys to select a lobby and
-Enter to join, or press `n` to create a named lobby.
-In a lobby, press Enter to signal you're ready and want the game to start (if the lobby has 3 players all ready, it won't wait for a 4th one).
-
-Choosing **Save & Quit** pauses the shared game and shows every connected player
-a save code. Keep that code and reconnect with your original SSH username:
-
+You can save and resume an online game. Resuming is done like so:
 ```bash
 ssh -t -p 2222 yourname@catan.vichoreyes.cl resume YOUR_SAVE_CODE
 ```
 
-Everyone uses the same code. The game resumes once all original players have
-connected and marked themselves ready. Saves expire 30 days after saving.
-Rejoining an unsaved game already in progress is not supported yet.
-
-Self-hosted servers keep snapshots in `saves/` under their working directory,
-with a 64 MiB total limit and a 1 MiB limit per save. Saving again replaces the
-same game's snapshot and renews its expiry. Expired saves are removed on the
-next save; if storage is full or a write fails, the game stays open.
+Note: saved games are deleted after 30 days to save space.
+Plus, I haven't yet committed to staying backwards-compatible with old game saves.
 
 ### Self host
 
@@ -89,10 +78,6 @@ Options for the server can be checked with
 ```
 $ go run . serve -help
 ```
-
-This feature is in its early stages and as such has a bunch of
-[rough edges](https://github.com/VichoReyes/el-poblador/issues?q=is%3Aissue%20is%3Aopen%20label%3Assh).
-Please send pull requests or [bug reports](https://github.com/VichoReyes/el-poblador/issues).
 
 ## License
 
