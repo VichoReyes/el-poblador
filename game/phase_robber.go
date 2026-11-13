@@ -59,7 +59,7 @@ func (p *phasePlaceRobber) ConfirmTurn() (Phase, EnterMode) {
 		}
 	}
 	if len(stealablePlayers) == 0 { // no one to steal from? skip
-		return p.continuation, EnterReset
+		return resumeRobber(p.game, p.continuation), EnterReset
 	}
 	return &phaseStealCard{
 		game:             p.game,
@@ -109,7 +109,7 @@ func (p *phaseStealCard) ConfirmTurn() (Phase, EnterMode) {
 		currentPlayer := &p.game.Players[p.game.PlayerTurn]
 		p.game.LogAction(currentPlayer, " stole a card from ", &player)
 	}
-	return p.continuation, EnterReset
+	return resumeRobber(p.game, p.continuation), EnterReset
 }
 
 func (p *phaseStealCard) Menu() RichText {
