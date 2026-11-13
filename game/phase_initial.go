@@ -81,6 +81,7 @@ func (p *phaseInitialSettlements) ConfirmTurn() (Phase, EnterMode) {
 
 	// Decrease available settlements after placing initial ones.
 	player.SettlementsAvailable--
+	p.game.updateAwards()
 
 	// Check for game end after building initial settlement (unlikely but for completeness)
 	if winner := p.game.CheckGameEnd(); winner != nil {
@@ -135,6 +136,8 @@ func PhaseInitialRoad(game *Game, sourceCross board.CrossCoord, isFirstPair bool
 func (p *phaseInitialRoad) ConfirmTurn() (Phase, EnterMode) {
 	roadCoord := board.NewPathCoord(p.sourceCross, p.cursorCross)
 	p.game.Board.SetRoad(roadCoord, p.game.PlayerTurn)
+	p.game.Players[p.game.PlayerTurn].RoadsAvailable--
+	p.game.updateAwards()
 	return nextInitialPhase(p.game, p.isFirstPair), EnterReset
 }
 

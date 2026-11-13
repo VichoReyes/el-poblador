@@ -54,6 +54,9 @@ type Game struct {
 	ActionLog   []RichText
 	TradeOffers []TradeOffer
 	shouldQuit  bool
+	// Player IDs of award holders; -1 means the award is unclaimed.
+	LongestRoadHolder int
+	LargestArmyHolder int
 }
 
 // reset states, and return first Phase of next turn
@@ -64,6 +67,9 @@ func (g *Game) NextTurn() Phase {
 	g.PlayerTurn %= len(g.Players)
 	nextPlayer := &g.Players[g.PlayerTurn]
 	g.LogAction("Turn passed to ", nextPlayer)
+	if winner := g.CheckGameEnd(); winner != nil {
+		return PhaseGameEnd(g, winner)
+	}
 	return PhaseDiceRoll(g)
 }
 
@@ -188,7 +194,7 @@ func (g *Game) buildSidebar(playerPerspective int, margin lipgloss.Style, useEmo
 		} else {
 			name = player.Render(player.Name, r)
 		}
-		info := player.Render(fmt.Sprintf(" has %d resources, %d dev cards", player.TotalResources(), player.TotalDevCards()), r)
+		info := player.Render(fmt.Sprintf(" has %d resources, %d dev cards", player.TotalResources(), len(player.HiddenDevCards)), r)
 		playerList = append(playerList, name, info)
 	}
 	otherPlayers := margin.Render(strings.Join(playerList, "\n"))
@@ -211,7 +217,7 @@ func (g *Game) buildSidebar(playerPerspective int, margin lipgloss.Style, useEmo
 		resourceRow.String(),
 		countRow.String(),
 		"",
-		fmt.Sprintf("Dev Cards: %d", myPlayer.TotalDevCards()),
+		fmt.Sprintf("Dev Cards: %d", len(myPlayer.HiddenDevCards)),
 	}
 	myResourcesStr := margin.Render(strings.Join(myResources, "\n"))
 
@@ -259,7 +265,7 @@ func (g *Game) helpText(width int, playerPerspective int, r *lipgloss.Renderer) 
 		}
 	}
 
-	renderedHelp := r.PlaceHorizontal(width, lipgloss.Center, helpMsg)
+	renderedHelp := r.NewStyle().Width(width).Align(lipgloss.Center).Render(helpMsg)
 	return renderedHelp
 }
 
@@ -313,6 +319,8 @@ func (g *Game) StartOptions(playerNames []string, shufflePlayers, initBoard bool
 		}
 	}
 	g.PlayerTurn = 0
+	g.LongestRoadHolder = -1
+	g.LargestArmyHolder = -1
 	g.phaseStack = []Phase{PhaseInitialSettlements(g, true)}
 	g.DevCardDeck = shuffleDevCards()
 	g.ActionLog = make([]RichText, 0, 15)
@@ -476,13 +484,12 @@ func (g *Game) getPlayerID(player *Player) int {
 	panic("Player not found")
 }
 
-// CheckGameEnd checks if any player has won and returns the winner, or nil if game continues
+// CheckGameEnd checks the turn holder: players can only win on their own turn,
+// even if another player's settlement transfers Longest Road to them.
 func (g *Game) CheckGameEnd() *Player {
-	for i := range g.Players {
-		player := &g.Players[i]
-		if player.VictoryPoints(g) >= 10 {
-			return player
-		}
+	player := &g.Players[g.PlayerTurn]
+	if player.VictoryPoints(g) >= 10 {
+		return player
 	}
 	return nil
 }

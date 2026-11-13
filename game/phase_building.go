@@ -134,6 +134,7 @@ func (p *phaseSettlementPlacement) ConfirmTurn() (Phase, EnterMode) {
 	p.game.Board.SetSettlement(p.cursorCross, playerId)
 
 	p.game.LogAction(player, " built a settlement")
+	p.game.updateAwards()
 
 	// Check for game end after building settlement
 	if winner := p.game.CheckGameEnd(); winner != nil {

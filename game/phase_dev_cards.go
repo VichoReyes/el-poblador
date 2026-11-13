@@ -41,6 +41,10 @@ func (p *phasePlayDevelopmentCard) ConfirmTurn() (Phase, EnterMode) {
 	case DevCardKnight:
 		player.PlayDevCard(card)
 		p.game.LogAction(player, " played Knight")
+		p.game.updateAwards()
+		if winner := p.game.CheckGameEnd(); winner != nil {
+			return PhaseGameEnd(p.game, winner), EnterReset
+		}
 		return PhasePlaceRobber(p.game, PhaseIdle(p.game)), EnterReset
 	case DevCardRoadBuilding:
 		player.PlayDevCard(card)

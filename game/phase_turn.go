@@ -33,6 +33,11 @@ func (p *phaseDiceRoll) ConfirmTurn() (Phase, EnterMode) {
 		// Play Knight card
 		player := &p.game.Players[p.game.PlayerTurn]
 		if player.PlayDevCard(DevCardKnight) {
+			p.game.LogAction(player, " played Knight")
+			p.game.updateAwards()
+			if winner := p.game.CheckGameEnd(); winner != nil {
+				return PhaseGameEnd(p.game, winner), EnterReset
+			}
 			return PhasePlaceRobber(p.game, p), EnterReset
 		}
 		p.invalid = "You don't have a Knight card"
@@ -119,6 +124,7 @@ func PhaseIdleWithNotification(game *Game, notification string) Phase {
 				"Make Trade Offer",
 				"Check Trade Offers",
 				"Play Development Card",
+				"Game Stats",
 				"End Turn",
 			},
 		},
@@ -136,7 +142,9 @@ func (p *phaseIdle) ConfirmTurn() (Phase, EnterMode) {
 		return PhaseTradePool(p.game), EnterPush
 	case 3: // Play Development Card
 		return PhasePlayDevelopmentCard(p.game), EnterPush
-	case 4: // End Turn
+	case 4: // Game Stats
+		return newPhaseGameStats(p.game, p.game.PlayerTurn), EnterPush
+	case 5: // End Turn
 		return p.game.NextTurn(), EnterReset
 	default:
 		panic("Invalid option selected")

@@ -6,6 +6,7 @@ package game
 // Spectators can:
 //   - Make trade offers to other players
 //   - View and accept trade offers from the pool
+//   - Inspect played development cards and awards
 //
 // The actual trade phases (phaseTradeOffer, phaseTradeSelectReceive, phaseTradePool)
 // implement both Phase and SpectatorPhase interfaces, so they are shared between
@@ -25,6 +26,7 @@ func PhaseSpectatorIdle(game *Game, playerID int) SpectatorPhase {
 		options: []string{
 			"Make Trade Offer",
 			"View Trade Pool",
+			"Game Stats",
 		},
 		selected: 0,
 	}
@@ -46,6 +48,8 @@ func (p *phaseSpectatorIdle) ConfirmSpectator() (SpectatorPhase, EnterMode) {
 		return PhaseTradeOfferForPlayer(p.game, p.playerID), EnterPush
 	case 1: // View Trade Pool
 		return PhaseTradePoolForPlayer(p.game, p.playerID), EnterPush
+	case 2: // Game Stats
+		return newPhaseGameStats(p.game, p.playerID), EnterPush
 	default:
 		panic("Invalid option selected")
 	}

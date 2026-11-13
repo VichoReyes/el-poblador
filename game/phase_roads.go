@@ -133,6 +133,8 @@ func (p *phaseRoadEnd) ConfirmTurn() (Phase, EnterMode) {
 			p.invalid = "Not enough resources"
 			return p, EnterReplace
 		}
+	} else {
+		player.RoadsAvailable--
 	}
 
 	p.game.Board.SetRoad(pathCoord, playerId)
@@ -141,6 +143,10 @@ func (p *phaseRoadEnd) ConfirmTurn() (Phase, EnterMode) {
 		p.game.LogAction(player, " built a free road")
 	} else {
 		p.game.LogAction(player, " built a road")
+	}
+	p.game.updateAwards()
+	if winner := p.game.CheckGameEnd(); winner != nil {
+		return PhaseGameEnd(p.game, winner), EnterReset
 	}
 
 	return p.continuation, EnterReset

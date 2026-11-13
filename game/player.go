@@ -127,6 +127,16 @@ func (p *Player) TotalDevCards() int {
 	return len(p.HiddenDevCards) + len(p.PlayedDevCards)
 }
 
+func (p *Player) PlayedDevCardCount(card DevCard) int {
+	count := 0
+	for _, played := range p.PlayedDevCards {
+		if played == card {
+			count++
+		}
+	}
+	return count
+}
+
 // BuildRoad consumes resources and builds a road
 func (p *Player) BuildRoad() bool {
 	required := map[board.ResourceType]int{
@@ -210,6 +220,12 @@ func (p *Player) VictoryPoints(game *Game) int {
 	// Cities replace settlements, so they're worth 2 points total (not additional 2)
 	// But in this codebase cities are stored separately from settlements, so count cities as 1 additional point
 	points += game.Board.CountCities(playerID)
+	if game.LongestRoadHolder == playerID {
+		points += 2
+	}
+	if game.LargestArmyHolder == playerID {
+		points += 2
+	}
 
 	return points
 }
