@@ -31,17 +31,20 @@ func renderCrossing(board *Board, canvas *boardCanvas, coord CrossCoord, view Bo
 	x, midLine := crossingPosition(coord)
 	settlementOwner, hasSettlement := board.Settlements[coord]
 	hasCursor := view.CrossCursor != nil && *view.CrossCursor == coord
-	if hasCursor {
-		cursorColor := lipgloss.AdaptiveColor{Light: "#0277BD", Dark: "#4FC3F7"}
-		style := view.newStyle().Foreground(cursorColor).Blink(true)
-		canvas.write(x, midLine, style.Render(" ○ "))
-	} else if hasSettlement {
-		_, isCity := board.CityUpgrades[coord]
-		if isCity {
-			canvas.write(x, midLine, renderPlayerContent(board.PlayerColors, settlementOwner, "███", view))
-		} else {
-			canvas.write(x, midLine, renderPlayerContent(board.PlayerColors, settlementOwner, "▲▲▲", view))
+	content := " ○ "
+	if hasSettlement {
+		content = "▲▲▲"
+		if _, isCity := board.CityUpgrades[coord]; isCity {
+			content = "███"
 		}
+	}
+	if hasCursor {
+		// A contrasting background keeps both the marker and any building visible.
+		style := view.newStyle().Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#000000"}).
+			Background(lipgloss.AdaptiveColor{Light: "#0277BD", Dark: "#4FC3F7"}).Bold(true)
+		canvas.write(x, midLine, style.Render(content))
+	} else if hasSettlement {
+		canvas.write(x, midLine, renderPlayerContent(board.PlayerColors, settlementOwner, content, view))
 	}
 
 	// print right side

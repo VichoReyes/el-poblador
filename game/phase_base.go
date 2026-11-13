@@ -68,10 +68,20 @@ func moveTileCursor(tileCoord board.TileCoord, direction string) (board.TileCoor
 		return tileCoord.Up()
 	case "down":
 		return tileCoord.Down()
-	case "left":
-		return tileCoord.Left()
-	case "right":
-		return tileCoord.Right()
+	case "left", "right":
+		// Alternate between the two tile rows in a horizontal lane.
+		dx := 1
+		if direction == "left" {
+			dx = -1
+		}
+		dy := 1
+		if tileCoord.X%2 != 0 {
+			dy = -1
+		}
+		if dest, ok := board.NewTileCoord(tileCoord.X+dx, tileCoord.Y+dy); ok {
+			return dest, true
+		}
+		return board.NewTileCoord(tileCoord.X+dx, tileCoord.Y-dy)
 	default:
 		return tileCoord, false
 	}
@@ -84,9 +94,10 @@ func moveCrossCursor(cursorCross board.CrossCoord, direction string) (board.Cros
 	case "down":
 		return cursorCross.Down()
 	case "left":
-		return cursorCross.Left()
+		// Cross the tile when there is no road edge on this side.
+		return board.NewCrossCoord(cursorCross.X-1, cursorCross.Y)
 	case "right":
-		return cursorCross.Right()
+		return board.NewCrossCoord(cursorCross.X+1, cursorCross.Y)
 	default:
 		return cursorCross, false
 	}
