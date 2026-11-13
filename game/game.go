@@ -49,11 +49,14 @@ type Game struct {
 	// stacks backing the other players' states
 	spectatorPhaseStacks map[int][]SpectatorPhase
 	// who is the turn holder
-	PlayerTurn  int
-	DevCardDeck []DevCard
-	ActionLog   []RichText
-	TradeOffers []TradeOffer
-	shouldQuit  bool
+	PlayerTurn    int
+	DevCardDeck   []DevCard
+	ActionLog     []RichText
+	TradeOffers   []TradeOffer
+	shouldQuit    bool
+	saveHandler   func(*Game) (string, error)
+	saveNotice    string
+	finishHandler func(*Game, *Player)
 	// Player IDs of award holders; -1 means the award is unclaimed.
 	LongestRoadHolder int
 	LargestArmyHolder int
@@ -329,6 +332,9 @@ func (g *Game) StartOptions(playerNames []string, shufflePlayers, initBoard bool
 func (g *Game) MoveCursor(direction string, requestPlayer *int) {
 	g.m.Lock()
 	defer g.m.Unlock()
+	if g.shouldQuit {
+		return
+	}
 	playerPerspective := g.playerPerspective(requestPlayer)
 
 	if playerPerspective == g.PlayerTurn {
@@ -365,6 +371,9 @@ func (g *Game) MoveCursorToPlaceSettlement() {
 func (g *Game) ConfirmAction(requestPlayer *int) {
 	g.m.Lock()
 	defer g.m.Unlock()
+	if g.shouldQuit {
+		return
+	}
 	playerPerspective := g.playerPerspective(requestPlayer)
 
 	if playerPerspective == g.PlayerTurn {
@@ -383,6 +392,9 @@ func (g *Game) ConfirmAction(requestPlayer *int) {
 func (g *Game) CancelAction(requestPlayer *int) {
 	g.m.Lock()
 	defer g.m.Unlock()
+	if g.shouldQuit {
+		return
+	}
 	playerPerspective := g.playerPerspective(requestPlayer)
 
 	if playerPerspective == g.PlayerTurn {
@@ -412,6 +424,7 @@ func (g *Game) applyTurnTransition(next Phase, mode EnterMode) {
 	if next == nil {
 		return
 	}
+	_, wasFinished := g.Phase().(*phaseGameEnd)
 	g.ensureTurnStack()
 	switch mode {
 	case EnterPush:
@@ -426,6 +439,9 @@ func (g *Game) applyTurnTransition(next Phase, mode EnterMode) {
 		g.phaseStack = []Phase{next}
 	default:
 		panic("unknown turn enter mode")
+	}
+	if ended, ok := g.Phase().(*phaseGameEnd); ok && !wasFinished && g.finishHandler != nil {
+		g.finishHandler(g, ended.winner)
 	}
 }
 
@@ -554,3 +570,17 @@ func (g *Game) AddTradeOffer(offererID, targetID int, offering, requesting map[b
 	g.TradeOffers = append(g.TradeOffers, offer)
 	return true
 }
+
+// SetSaveHandler configures remote persistence before publishing the game.
+// The handler executes with the game locked and must not call locking Game methods.
+func (g *Game) SetSaveHandler(handler func(*Game) (string, error)) { g.saveHandler = handler }
+
+func (g *Game) SaveNotice() string {
+	g.m.RLock()
+	defer g.m.RUnlock()
+	return g.saveNotice
+}
+
+// SetFinishHandler configures completion reporting before publishing the game.
+// The handler executes with the game locked and must not call locking Game methods.
+func (g *Game) SetFinishHandler(handler func(*Game, *Player)) { g.finishHandler = handler }

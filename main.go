@@ -5,12 +5,12 @@ import (
 	"encoding/gob"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/VichoReyes/el-poblador/board"
 	"github.com/VichoReyes/el-poblador/game"
 	"github.com/VichoReyes/el-poblador/internal/tui"
+	"github.com/charmbracelet/log"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/wish"
@@ -156,7 +156,7 @@ func main() {
 			serveCmd.PrintDefaults()
 		}
 		serveCmd.Parse(args[1:])
-		log.Println("starting server at", *addr)
+		log.Info("starting server", "address", *addr)
 		var gameMiddleware wish.Middleware
 		if *dummy {
 			gameMiddleware = bubbletea.Middleware(tui.DummyHandler)
@@ -169,13 +169,13 @@ func main() {
 			wish.WithMiddleware(
 				gameMiddleware,
 				activeterm.Middleware(),
-				logging.Middleware(),
+				logging.StructuredMiddleware(),
 			),
 		)
 		if err != nil {
-			log.Fatalln(err)
+			log.Fatal("server failed", "error", err)
 		}
-		log.Fatalln(server.ListenAndServe())
+		log.Fatal("server stopped", "error", server.ListenAndServe())
 
 	default:
 		fmt.Printf("Error: unknown command '%s'\n", command)

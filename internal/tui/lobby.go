@@ -2,7 +2,6 @@ package tui
 
 import (
 	"errors"
-	"log"
 	"sort"
 	"strings"
 	"sync"
@@ -10,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/VichoReyes/el-poblador/game"
+	"github.com/charmbracelet/log"
 )
 
 const lobbyNameLimit = 40
@@ -26,6 +26,9 @@ type lobbyCommon struct {
 	players   map[string]*lobbyPlayer
 	isStarted bool
 	game      game.Game
+	code      string
+	resuming  bool
+	seats     map[string]int
 }
 
 type lobbySnapshot struct {
@@ -40,13 +43,14 @@ type lobbySnapshot struct {
 // rendering run after releasing both locks; game initialization is published
 // under the lobby lock before isStarted becomes true.
 type lobbyRegistry struct {
+	saves   *saveStore
 	m       sync.RWMutex
 	nextID  uint64
 	lobbies map[uint64]*lobbyCommon
 }
 
 func newLobbyRegistry() *lobbyRegistry {
-	return &lobbyRegistry{lobbies: make(map[uint64]*lobbyCommon)}
+	return &lobbyRegistry{saves: &saveStore{dir: "saves"}, lobbies: make(map[uint64]*lobbyCommon)}
 }
 
 // Create reserves the name and joins the creator before publishing the lobby.
@@ -76,6 +80,7 @@ func (r *lobbyRegistry) Create(name, username string) (*lobbyCommon, error) {
 		players: map[string]*lobbyPlayer{username: {}},
 	}
 	lobby.game.MakeBoard()
+	r.configureGame(lobby)
 	r.lobbies[lobby.id] = lobby
 	return lobby, nil
 }
@@ -89,7 +94,9 @@ func (r *lobbyRegistry) List() []lobbySnapshot {
 	lobbies := make([]lobbySnapshot, 0, len(r.lobbies))
 	for _, lobby := range r.lobbies {
 		lobby.m.RLock()
-		lobbies = append(lobbies, lobbySnapshot{lobby.id, lobby.name, len(lobby.players), lobby.isStarted})
+		if !lobby.resuming {
+			lobbies = append(lobbies, lobbySnapshot{lobby.id, lobby.name, len(lobby.players), lobby.isStarted})
+		}
 		lobby.m.RUnlock()
 	}
 	sort.Slice(lobbies, func(i, j int) bool {
@@ -107,7 +114,7 @@ func (r *lobbyRegistry) Join(id uint64, username string) (*lobbyCommon, error) {
 	}
 	lobby.m.Lock()
 	defer lobby.m.Unlock()
-	if lobby.isStarted {
+	if lobby.isStarted || lobby.resuming {
 		return nil, errors.New("that game has already started")
 	}
 	if len(lobby.players) >= 4 {
@@ -166,6 +173,17 @@ func (l *lobbyCommon) startIfReady() []string {
 			return nil
 		}
 	}
+	if l.resuming {
+		if len(l.players) != len(l.seats) {
+			return nil
+		}
+		l.isStarted = true
+		names := make([]string, len(l.seats))
+		for name, index := range l.seats {
+			names[index] = name
+		}
+		return names
+	}
 	// Assign indices in the same pass that builds the game's player order.
 	names := make([]string, 0, len(l.players))
 	for name, player := range l.players {
@@ -179,6 +197,10 @@ func (l *lobbyCommon) startIfReady() []string {
 
 func (l *lobbyCommon) logGameStart(players []string) {
 	if players != nil {
-		log.Printf("game started: lobby=%q id=%d players=%q", l.name, l.id, players)
+		if l.resuming {
+			log.Info("game resumed", "lobby", l.name, "id", l.id, "code", l.code, "players", players)
+		} else {
+			log.Info("game started", "lobby", l.name, "id", l.id, "players", players)
+		}
 	}
 }

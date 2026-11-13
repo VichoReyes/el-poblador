@@ -8,14 +8,15 @@ import (
 
 // GameConn is the Bubble tea model for an active game
 type GameConn struct {
-	renderer       *lipgloss.Renderer
-	game           *game.Game
-	width          int // TODO: abstract to ResizableModel
-	height         int
-	userPlayer     *int // nil means follow turn
-	twoColumnCycle int  // 0-1: for width 90-119
-	oneColumnCycle int  // 0-2: for width <90
-	useEmoji       bool
+	renderer        *lipgloss.Renderer
+	game            *game.Game
+	width           int // TODO: abstract to ResizableModel
+	height          int
+	userPlayer      *int // nil means follow turn
+	twoColumnCycle  int  // 0-1: for width 90-119
+	oneColumnCycle  int  // 0-2: for width <90
+	useEmoji        bool
+	saveNoticeShown bool
 }
 
 func (m *GameConn) Init() tea.Cmd {
@@ -35,7 +36,7 @@ func (m *GameConn) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.game.MoveCursor(msg.String(), m.userPlayer)
 		case "enter":
 			m.game.ConfirmAction(m.userPlayer)
-			if m.game.ShouldQuit() {
+			if m.game.ShouldQuit() && m.game.SaveNotice() == "" {
 				return m, tea.Quit
 			}
 		case "esc":
@@ -49,10 +50,19 @@ func (m *GameConn) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 	}
+	if notice := m.game.SaveNotice(); notice != "" && !m.saveNoticeShown {
+		m.saveNoticeShown = true
+		// Print outside the managed view so the code survives quitting and remains
+		// in terminal scrollback. Println must run after leaving the alternate screen.
+		return m, tea.Sequence(tea.ExitAltScreen, tea.Println(notice))
+	}
 	return m, nil
 }
 
 func (m *GameConn) View() string {
+	if notice := m.game.SaveNotice(); notice != "" {
+		return ""
+	}
 	return m.game.Print(game.PrintOptions{
 		Renderer:       m.renderer,
 		Width:          m.width,
