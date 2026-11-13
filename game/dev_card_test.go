@@ -262,6 +262,10 @@ func TestYearOfPlentyCard(t *testing.T) {
 		t.Fatal("Could not find wheat or ore in resource types")
 	}
 
+	if menu := yearOfPlentyPhaseImpl.Menu().String(); !strings.Contains(menu, "Choose first resource:") {
+		t.Errorf("First selection menu should identify the choice, got: %s", menu)
+	}
+
 	// Select first resource (wheat)
 	yearOfPlentyPhaseImpl.selected = wheatIndex
 	phase2, _ := yearOfPlentyPhaseImpl.ConfirmTurn()
@@ -276,6 +280,10 @@ func TestYearOfPlentyCard(t *testing.T) {
 	helpText := yearOfPlentyPhaseImpl2.HelpText()
 	if !strings.Contains(helpText, "Wheat") {
 		t.Errorf("Help text should show selected wheat, got: %s", helpText)
+	}
+
+	if menu := yearOfPlentyPhaseImpl2.Menu().String(); !strings.Contains(menu, "First resource: Wheat\nChoose second resource:") {
+		t.Errorf("Second selection menu should show the first choice and prompt, got: %s", menu)
 	}
 
 	// Select second resource (ore)

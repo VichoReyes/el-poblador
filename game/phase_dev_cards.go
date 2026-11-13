@@ -168,6 +168,16 @@ func (p *phaseYearOfPlenty) ConfirmTurn() (Phase, EnterMode) {
 	return PhaseIdleWithNotification(p.game, fmt.Sprintf("Gained %s and %s from the bank!", p.selectedResources[0], p.selectedResources[1])), EnterReset
 }
 
+func (p *phaseYearOfPlenty) Menu() RichText {
+	var menu RichText
+	if p.selectedCount == 0 {
+		menu = plainText("Choose first resource:\n")
+	} else {
+		menu = plainText(fmt.Sprintf("First resource: %s\nChoose second resource:\n", p.selectedResources[0]))
+	}
+	return append(menu, p.phaseWithOptions.Menu()...)
+}
+
 func (p *phaseYearOfPlenty) HelpText() string {
 	if p.selectedCount == 0 {
 		return "Select first resource to gain from the bank"

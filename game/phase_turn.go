@@ -7,6 +7,7 @@ import (
 	"github.com/VichoReyes/el-poblador/board"
 	"math/rand/v2"
 	"os"
+	"slices"
 	"strings"
 	"time"
 )
@@ -23,6 +24,13 @@ func PhaseDiceRoll(game *Game) Phase {
 			options: []string{"Roll", "Play Knight", "Save & Quit"},
 		},
 	}
+}
+
+func (p *phaseDiceRoll) Menu() RichText {
+	options := p.phaseWithOptions
+	player := &p.game.Players[p.game.PlayerTurn]
+	options.disabled = []bool{false, !slices.Contains(player.HiddenDevCards, DevCardKnight)}
+	return options.Menu()
 }
 
 func (p *phaseDiceRoll) ConfirmTurn() (Phase, EnterMode) {
