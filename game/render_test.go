@@ -64,6 +64,43 @@ func TestSharedGameTextStyledAtRenderTime(t *testing.T) {
 	}
 }
 
+func TestDiceRollKnightMenuStyle(t *testing.T) {
+	g := &Game{}
+	g.Start([]string{"Ana", "Bob", "Cat"})
+	phase := PhaseDiceRoll(g).(*phaseDiceRoll)
+	r := viewerRenderer(termenv.TrueColor, true)
+	struckKnight := r.NewStyle().Strikethrough(true).Render("Play Knight")
+
+	// Other players' Knights and already played Knights do not make this option available.
+	g.Players[1].HiddenDevCards = []DevCard{DevCardKnight}
+	g.Players[0].PlayedDevCards = []DevCard{DevCardKnight}
+	if menu := phase.Menu().Render(r); !strings.Contains(menu, struckKnight) {
+		t.Errorf("Knight option should be struck through without a hidden Knight: %q", menu)
+	}
+	phase.selected = 1
+	if next, mode := phase.ConfirmTurn(); next != phase || mode != EnterReplace || phase.HelpText() != "You don't have a Knight card" {
+		t.Fatal("Selecting an unavailable Knight should retain the existing error behavior")
+	}
+
+	g.Players[0].HiddenDevCards = []DevCard{DevCardKnight}
+	if menu := phase.Menu().Render(r); strings.Contains(menu, struckKnight) || !strings.Contains(menu, "Play Knight") {
+		t.Errorf("Knight option should be available with a hidden Knight: %q", menu)
+	}
+
+	g.SetPhase(phase)
+	g.ConfirmAction(nil)
+	if _, ok := g.Phase().(*phasePlaceRobber); !ok {
+		t.Fatal("Playing the last Knight should enter robber placement")
+	}
+	g.ConfirmAction(nil)
+	if g.Phase() != phase {
+		t.Fatal("Resolving the Knight should return to the same dice-roll phase")
+	}
+	if menu := phase.Menu().Render(r); !strings.Contains(menu, struckKnight) {
+		t.Errorf("Knight option should be struck through after playing the last Knight: %q", menu)
+	}
+}
+
 func TestGameEndMenu(t *testing.T) {
 	g := &Game{}
 	g.StartOptions([]string{"Ana", "Bob", "Cat"}, false, true)
