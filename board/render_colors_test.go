@@ -27,15 +27,17 @@ func TestBoardPiecesAndCursorsUseViewerRenderer(t *testing.T) {
 		view := BoardView{Renderer: r, CrossCursor: &cursor, TileCursor: &tile}
 		text := strings.Join(b.Print(view), "\n")
 		color, cursorColor, background := "#123456", "#0277BD", "#E0E0E0"
+		cursorForeground := "#FFFFFF"
 		if dark {
 			color, cursorColor, background = "#FEDCBA", "#4FC3F7", "#424242"
+			cursorForeground = "#000000"
 		}
 		for _, piece := range []string{"▲▲▲", "███", "====", "//", "\\\\"} {
 			if !strings.Contains(text, r.NewStyle().Foreground(lipgloss.Color(color)).Render(piece)) {
 				t.Fatalf("piece %q did not use viewer palette", piece)
 			}
 		}
-		if !strings.Contains(text, r.NewStyle().Foreground(lipgloss.Color(cursorColor)).Blink(true).Render(" ○ ")) {
+		if !strings.Contains(text, r.NewStyle().Foreground(lipgloss.Color(cursorForeground)).Background(lipgloss.Color(cursorColor)).Bold(true).Render(" ○ ")) {
 			t.Fatal("crossing cursor did not use viewer palette")
 		}
 		terrainColor := "#795548"
