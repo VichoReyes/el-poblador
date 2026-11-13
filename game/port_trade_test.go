@@ -78,33 +78,38 @@ func proposeTrade(t *testing.T, g *Game, offer, request map[board.ResourceType]i
 
 func TestPortBankTrades(t *testing.T) {
 	for _, resource := range board.RESOURCE_TYPES {
-		for _, cost := range []int{2, 3, 4} {
-			t.Run(fmt.Sprintf("%s/%d:1", resource, cost), func(t *testing.T) {
+		for _, trade := range []struct{ rate, received int }{
+			{2, 1}, {3, 1}, {4, 1},
+			{2, 5}, {3, 5}, {4, 5},
+		} {
+			cost, received := trade.rate*trade.received, trade.received
+			t.Run(fmt.Sprintf("%s/%d:%d", resource, cost, received), func(t *testing.T) {
 				g := newPortTradeGame()
-				if cost == 2 {
+				if trade.rate == 2 {
 					grantPort(t, g, g.PlayerTurn, resource)
-				} else if cost == 3 {
+				} else if trade.rate == 3 {
 					grantPort(t, g, g.PlayerTurn, board.ResourceInvalid)
 				}
 				requested := board.ResourceWheat
 				if resource == requested {
-					requested = board.ResourceOre
+					requested = board.ResourceBrick
 				}
+				g.Players[g.PlayerTurn].Resources[resource] = cost
 				before := maps.Clone(g.Players[g.PlayerTurn].Resources)
-				proposeTrade(t, g, map[board.ResourceType]int{resource: cost}, map[board.ResourceType]int{requested: 1}, nil)
+				proposeTrade(t, g, map[board.ResourceType]int{resource: cost}, map[board.ResourceType]int{requested: received}, nil)
 				before[resource] -= cost
-				before[requested]++
+				before[requested] += received
 				if !maps.Equal(g.Players[g.PlayerTurn].Resources, before) {
 					t.Fatalf("incorrect resources after trade: %v, want %v", g.Players[g.PlayerTurn].Resources, before)
 				}
 				if len(g.TradeOffers) != 0 {
 					t.Fatal("bank trade created a player offer")
 				}
-				notification := fmt.Sprintf("Traded %d %s for 1 %s!", cost, resource, requested)
+				notification := fmt.Sprintf("Traded %d %s for %d %s!", cost, resource, received, requested)
 				if _, ok := g.Phase().(*phaseIdle); !ok || !strings.Contains(g.Phase().HelpText(), notification) {
 					t.Fatalf("expected idle notification %q, got %T: %s", notification, g.Phase(), g.Phase().HelpText())
 				}
-				log := fmt.Sprintf("Bob traded %d %s for 1 %s with the bank", cost, resource, requested)
+				log := fmt.Sprintf("Bob traded %d %s for %d %s with the bank", cost, resource, received, requested)
 				if got := g.ActionLog[0].String(); got != log {
 					t.Fatalf("got log %q, want %q", got, log)
 				}
@@ -123,6 +128,11 @@ func TestPortTradeFallbackAndAvailableRates(t *testing.T) {
 		request  map[board.ResourceType]int
 		bank     bool
 	}{
+		{name: "nonintegral batch rate", ports: []board.ResourceType{board.ResourceWood}, offer: map[board.ResourceType]int{board.ResourceWood: 5}, request: map[board.ResourceType]int{board.ResourceWheat: 2}},
+		{name: "batch without required port", offer: map[board.ResourceType]int{board.ResourceWood: 6}, request: map[board.ResourceType]int{board.ResourceWheat: 2}},
+		{name: "batch with wrong port", ports: []board.ResourceType{board.ResourceBrick}, offer: map[board.ResourceType]int{board.ResourceWood: 4}, request: map[board.ResourceType]int{board.ResourceWheat: 2}},
+		{name: "batch with mixed request", ports: []board.ResourceType{board.ResourceWood}, offer: map[board.ResourceType]int{board.ResourceWood: 10}, request: map[board.ResourceType]int{board.ResourceWheat: 3, board.ResourceOre: 2}},
+		{name: "4:1 batch with specific port", ports: []board.ResourceType{board.ResourceWood}, offer: map[board.ResourceType]int{board.ResourceWood: 8}, request: map[board.ResourceType]int{board.ResourceWheat: 2}, bank: true},
 		{name: "no port 3:1", offer: map[board.ResourceType]int{board.ResourceWood: 3}},
 		{name: "no port 2:1", offer: map[board.ResourceType]int{board.ResourceWood: 2}},
 		{name: "generic port cannot trade 2:1", ports: []board.ResourceType{board.ResourceInvalid}, offer: map[board.ResourceType]int{board.ResourceWood: 2}},
@@ -192,14 +202,14 @@ func TestPortTradeFallbackAndAvailableRates(t *testing.T) {
 }
 
 func TestSpectatorsCannotUseBankOrPortTrades(t *testing.T) {
-	for _, cost := range []int{2, 3, 4} {
-		t.Run(fmt.Sprintf("%d:1", cost), func(t *testing.T) {
+	for _, cost := range []int{4, 6, 8} {
+		t.Run(fmt.Sprintf("%d:2", cost), func(t *testing.T) {
 			g := newPortTradeGame()
 			spectator := 0
 			grantPort(t, g, spectator, board.ResourceWood)
 			grantPort(t, g, spectator, board.ResourceInvalid)
 			before := maps.Clone(g.Players[spectator].Resources)
-			proposeTrade(t, g, map[board.ResourceType]int{board.ResourceWood: cost}, map[board.ResourceType]int{board.ResourceWheat: 1}, &spectator)
+			proposeTrade(t, g, map[board.ResourceType]int{board.ResourceWood: cost}, map[board.ResourceType]int{board.ResourceWheat: 2}, &spectator)
 			if !maps.Equal(g.Players[spectator].Resources, before) {
 				t.Fatal("spectator executed a bank trade")
 			}
@@ -215,15 +225,15 @@ func TestSpectatorsCannotUseBankOrPortTrades(t *testing.T) {
 }
 
 func TestPortTradeRechecksResources(t *testing.T) {
-	for _, cost := range []int{2, 3} {
-		t.Run(fmt.Sprintf("%d:1", cost), func(t *testing.T) {
+	for _, cost := range []int{4, 6, 8} {
+		t.Run(fmt.Sprintf("%d:2", cost), func(t *testing.T) {
 			g := newPortTradeGame()
 			grantPort(t, g, g.PlayerTurn, board.ResourceWood)
 			grantPort(t, g, g.PlayerTurn, board.ResourceInvalid)
 			enterTrade(t, g, nil)
 			selectTradeResources(g, map[board.ResourceType]int{board.ResourceWood: cost}, nil)
 			g.ConfirmAction(nil)
-			selectTradeResources(g, map[board.ResourceType]int{board.ResourceWheat: 1}, nil)
+			selectTradeResources(g, map[board.ResourceType]int{board.ResourceWheat: 2}, nil)
 			// Resources may have changed since the offer was selected.
 			g.Players[g.PlayerTurn].Resources[board.ResourceWood] = cost - 1
 			before := maps.Clone(g.Players[g.PlayerTurn].Resources)

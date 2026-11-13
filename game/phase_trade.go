@@ -24,8 +24,8 @@ import (
 //   - Esc: Cancel and return to previous phase
 //
 // Trade Types:
-//   - Bank Trade: Offer 4 of one resource for 1 of another, or use a port for
-//     3:1 (generic) or 2:1 (the port's resource). Only the turn holder can do this.
+//   - Bank Trade: Exchange one resource for another in batches at 4:1, or use a
+//     port for 3:1 (generic) or 2:1 (the port's resource). Only the turn holder can do this.
 //   - Player Trade: Other proposals become broadcast offers in the trade pool.
 //
 // Design Notes:
@@ -269,12 +269,13 @@ func (p *phaseTradeSelectReceive) validateAndExecuteTrade() Phase {
 		}
 
 		player.Resources[offeredResource] -= cost
-		player.Resources[requestedResource]++
+		received := p.request[requestedResource]
+		player.Resources[requestedResource] += received
 
-		p.game.LogAction(player, " traded ", cost, " ", offeredResource, " for 1 ", requestedResource, " with the bank")
+		p.game.LogAction(player, " traded ", cost, " ", offeredResource, " for ", received, " ", requestedResource, " with the bank")
 
 		return PhaseIdleWithNotification(p.game,
-			fmt.Sprintf("Traded %d %s for 1 %s!", cost, offeredResource, requestedResource))
+			fmt.Sprintf("Traded %d %s for %d %s!", cost, offeredResource, received, requestedResource))
 	}
 
 	// Player-to-player trade: create a broadcast offer (TargetID = -1)
@@ -290,7 +291,7 @@ func (p *phaseTradeSelectReceive) validateAndExecuteTrade() Phase {
 	return PhaseIdleWithNotification(p.game, "Not enough resources to make this offer!")
 }
 
-// bankTrade recognizes one resource exchanged for one different resource at an
+// bankTrade recognizes batches of one resource exchanged for another at an
 // available rate. A zero cost means the proposal belongs in the player pool.
 func (p *phaseTradeSelectReceive) bankTrade() (board.ResourceType, board.ResourceType, int) {
 	totalOffered := 0
@@ -315,12 +316,13 @@ func (p *phaseTradeSelectReceive) bankTrade() (board.ResourceType, board.Resourc
 		}
 	}
 
-	if offeredTypes == 1 && totalRequested == 1 && requestedTypes == 1 && offeredResource != requestedResource {
+	if offeredTypes == 1 && requestedTypes == 1 && offeredResource != requestedResource && totalOffered%totalRequested == 0 {
+		rate := totalOffered / totalRequested
 		// Standard 4:1 trades remain possible even when the player owns ports.
 		// Each port grants its own rate; a 2:1 port alone does not grant 3:1.
-		if totalOffered == 4 ||
-			(totalOffered == 3 && p.game.Board.HasPort(p.game.PlayerTurn, board.ResourceInvalid)) ||
-			(totalOffered == 2 && p.game.Board.HasPort(p.game.PlayerTurn, offeredResource)) {
+		if rate == 4 ||
+			(rate == 3 && p.game.Board.HasPort(p.game.PlayerTurn, board.ResourceInvalid)) ||
+			(rate == 2 && p.game.Board.HasPort(p.game.PlayerTurn, offeredResource)) {
 			return offeredResource, requestedResource, totalOffered
 		}
 	}

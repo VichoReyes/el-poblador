@@ -63,9 +63,9 @@ func TestTurnHolderAndSpectatorTrading(t *testing.T) {
 		t.Fatal("Expected spectator phase for player 1")
 	}
 
-	// Navigate to "View Trade Pool"
+	// Navigate to "Check Trade Offers"
 	spectatorIdle := spectatorPhase.(*phaseSpectatorIdle)
-	spectatorIdle.MoveCursor("down") // Move to "View Trade Pool"
+	spectatorIdle.MoveCursor("down") // Move to "Check Trade Offers"
 
 	// Confirm to enter trade pool
 	nextSpectatorPhase, _ := spectatorIdle.ConfirmSpectator()
@@ -164,7 +164,7 @@ func TestTradePoolStaysOpenOnFailedAccept(t *testing.T) {
 		t.Fatal("Expected spectator phase for player 1")
 	}
 	spectatorIdle := spectatorPhase.(*phaseSpectatorIdle)
-	spectatorIdle.MoveCursor("down") // Move to "View Trade Pool"
+	spectatorIdle.MoveCursor("down") // Move to "Check Trade Offers"
 
 	// Enter trade pool
 	nextSpectatorPhase, _ := spectatorIdle.ConfirmSpectator()
@@ -237,7 +237,7 @@ func TestSpectatorRetractsOwnOffer(t *testing.T) {
 		t.Fatal("Expected spectator phase for player 1")
 	}
 	spectatorIdle := spectatorPhase.(*phaseSpectatorIdle)
-	spectatorIdle.MoveCursor("down") // Move to "View Trade Pool"
+	spectatorIdle.MoveCursor("down") // Move to "Check Trade Offers"
 
 	// Enter trade pool
 	nextSpectatorPhase, _ := spectatorIdle.ConfirmSpectator()

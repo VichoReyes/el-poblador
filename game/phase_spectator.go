@@ -25,7 +25,7 @@ func PhaseSpectatorIdle(game *Game, playerID int) SpectatorPhase {
 		playerID: playerID,
 		options: []string{
 			"Make Trade Offer",
-			"View Trade Pool",
+			"Check Trade Offers",
 			"Game Stats",
 		},
 		selected: 0,
@@ -46,7 +46,7 @@ func (p *phaseSpectatorIdle) ConfirmSpectator() (SpectatorPhase, EnterMode) {
 	switch p.selected {
 	case 0: // Make Trade Offer
 		return PhaseTradeOfferForPlayer(p.game, p.playerID), EnterPush
-	case 1: // View Trade Pool
+	case 1: // Check Trade Offers
 		return PhaseTradePoolForPlayer(p.game, p.playerID), EnterPush
 	case 2: // Game Stats
 		return newPhaseGameStats(p.game, p.playerID), EnterPush
