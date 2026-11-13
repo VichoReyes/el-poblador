@@ -75,8 +75,7 @@ func rollDice(game *Game) Phase {
 	}
 
 	if sum == 7 {
-		// TODO: discarding of > 7 cards
-		return PhasePlaceRobber(game, PhaseIdle(game))
+		return startDiscardRound(game)
 	}
 	generatedResources := game.Board.GenerateResources(sum)
 	for player, resources := range generatedResources {
