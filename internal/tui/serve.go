@@ -18,7 +18,7 @@ const tickPeriod = 200 * time.Millisecond
 // DummyHandler starts an independent game for each SSH connection.
 func DummyHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 	pty, _, _ := s.Pty()
-	conn := &GameConn{renderer: bubbletea.MakeRenderer(s), width: pty.Window.Width, height: pty.Window.Height, game: &game.Game{}}
+	conn := &GameConn{renderer: bubbletea.MakeRenderer(s), width: pty.Window.Width, height: pty.Window.Height, game: &game.Game{}, useEmoji: true}
 	conn.game.Start([]string{"a", "b", "c"})
 	return conn, []tea.ProgramOption{tea.WithAltScreen()}
 }
@@ -124,7 +124,7 @@ func (m *SessionModel) enterLobby(lobby *lobbyCommon) tea.Cmd {
 	log.Info("player joined lobby", "lobby", lobby.name, "id", lobby.id, "player", m.username)
 	return m.activate(&lobbyRef{
 		lobby: lobby, myName: m.username,
-		gameConn: &GameConn{game: &lobby.game, renderer: m.renderer},
+		gameConn: &GameConn{game: &lobby.game, renderer: m.renderer, useEmoji: true},
 	})
 }
 
