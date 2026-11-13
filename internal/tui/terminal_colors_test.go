@@ -1,4 +1,4 @@
-package main
+package tui
 
 import (
 	"bytes"
@@ -137,7 +137,7 @@ func TestSSHRendererUsesClientTerminal(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s := &colorSession{term: tc.term, env: tc.env,
 				input: strings.NewReader("\x1b]11;rgb:" + tc.background + "\x1b\\\x1b[?1;2c")}
-			model, _ := dummyHandler(s)
+			model, _ := DummyHandler(s)
 			r := model.(*GameConn).renderer
 			if r.ColorProfile() != tc.profile {
 				t.Fatalf("profile = %v, want %v", r.ColorProfile(), tc.profile)

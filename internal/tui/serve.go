@@ -1,4 +1,4 @@
-package main
+package tui
 
 import (
 	"log"
@@ -14,7 +14,8 @@ import (
 
 const tickPeriod = 200 * time.Millisecond
 
-func dummyHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
+// DummyHandler starts an independent game for each SSH connection.
+func DummyHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 	pty, _, _ := s.Pty()
 	conn := &GameConn{renderer: bubbletea.MakeRenderer(s), width: pty.Window.Width, height: pty.Window.Height, game: &game.Game{}}
 	conn.game.Start([]string{"a", "b", "c"})
@@ -27,8 +28,10 @@ func doTick() tea.Cmd {
 	return tea.Tick(tickPeriod, func(t time.Time) tea.Msg { return TickMsg(t) })
 }
 
-// Keep cleanup around the whole Bubble Tea program, including SSH disconnects.
-func multiplayerMiddleware(registry *lobbyRegistry) wish.Middleware {
+// MultiplayerMiddleware shares a lobby registry across SSH sessions and keeps
+// cleanup around the whole Bubble Tea program, including SSH disconnects.
+func MultiplayerMiddleware() wish.Middleware {
+	registry := newLobbyRegistry()
 	return func(next ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
 			pty, _, _ := s.Pty()
