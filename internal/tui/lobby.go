@@ -2,7 +2,6 @@ package tui
 
 import (
 	"errors"
-	"log"
 	"sort"
 	"strings"
 	"sync"
@@ -10,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/VichoReyes/el-poblador/game"
+	"github.com/charmbracelet/log"
 )
 
 const lobbyNameLimit = 40
@@ -80,7 +80,7 @@ func (r *lobbyRegistry) Create(name, username string) (*lobbyCommon, error) {
 		players: map[string]*lobbyPlayer{username: {}},
 	}
 	lobby.game.MakeBoard()
-	r.configureSave(lobby)
+	r.configureGame(lobby)
 	r.lobbies[lobby.id] = lobby
 	return lobby, nil
 }
@@ -197,6 +197,10 @@ func (l *lobbyCommon) startIfReady() []string {
 
 func (l *lobbyCommon) logGameStart(players []string) {
 	if players != nil {
-		log.Printf("game started: lobby=%q id=%d players=%q", l.name, l.id, players)
+		if l.resuming {
+			log.Info("game resumed", "lobby", l.name, "id", l.id, "code", l.code, "players", players)
+		} else {
+			log.Info("game started", "lobby", l.name, "id", l.id, "players", players)
+		}
 	}
 }

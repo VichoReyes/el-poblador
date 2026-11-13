@@ -2,12 +2,12 @@ package tui
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/VichoReyes/el-poblador/game"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	"github.com/charmbracelet/wish/bubbletea"
@@ -46,6 +46,7 @@ func MultiplayerMiddleware() wish.Middleware {
 				}
 				lobby, err := registry.Resume(args[1], s.User())
 				if err != nil {
+					log.Warn("game resume failed", "player", s.User(), "code", args[1], "error", err)
 					fmt.Fprintln(s.Stderr(), err)
 					s.Exit(1)
 					return
@@ -120,7 +121,7 @@ func (m *SessionModel) activate(model tea.Model) tea.Cmd {
 
 func (m *SessionModel) enterLobby(lobby *lobbyCommon) tea.Cmd {
 	m.lobby = lobby
-	log.Printf("player joined lobby: lobby=%q id=%d player=%q", lobby.name, lobby.id, m.username)
+	log.Info("player joined lobby", "lobby", lobby.name, "id", lobby.id, "player", m.username)
 	return m.activate(&lobbyRef{
 		lobby: lobby, myName: m.username,
 		gameConn: &GameConn{game: &lobby.game, renderer: m.renderer},

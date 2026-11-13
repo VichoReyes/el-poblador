@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/VichoReyes/el-poblador/game"
+	"github.com/charmbracelet/log"
 )
 
 const saveLifetime = 30 * 24 * time.Hour
@@ -46,13 +47,20 @@ func (s *saveStore) prune() (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	var total int64
+	var total, reclaimed int64
+	var expired, interrupted int
+	defer func() {
+		if expired > 0 || interrupted > 0 {
+			log.Info("save cleanup", "expired", expired, "interrupted", interrupted, "bytes_reclaimed", reclaimed)
+		}
+	}()
 	for _, entry := range entries {
 		// Recover temporary snapshots left behind by an interrupted write.
 		if strings.HasPrefix(entry.Name(), ".save-") {
 			if err := os.Remove(filepath.Join(s.dir, entry.Name())); err != nil {
 				return 0, err
 			}
+			interrupted++
 			continue
 		}
 		if !strings.HasSuffix(entry.Name(), ".gob") {
@@ -66,6 +74,8 @@ func (s *saveStore) prune() (int64, error) {
 			if err := os.Remove(filepath.Join(s.dir, entry.Name())); err != nil {
 				return 0, err
 			}
+			expired++
+			reclaimed += info.Size()
 		} else {
 			total += info.Size()
 		}
@@ -117,11 +127,25 @@ func (s *saveStore) write(code, name string, g *game.Game) (string, error) {
 	if err = os.Rename(f.Name(), path); err != nil {
 		return "", err
 	}
+	log.Info("game saved", "lobby", name, "code", code, "bytes", buf.Len(), "storage_bytes", total-previous+int64(buf.Len()), "expires_at", time.Now().Add(saveLifetime).UTC().Format(time.RFC3339))
 	return fmt.Sprintf("Game saved. Resume code: %s\nReconnect with the same username:\nssh -t -p <port> <username>@<host> resume %s\nSave expires in 30 days. Ctrl+C to disconnect.", code, code), nil
 }
 
-func (r *lobbyRegistry) configureSave(l *lobbyCommon) {
-	l.game.SetSaveHandler(func(g *game.Game) (string, error) {
+func (r *lobbyRegistry) configureGame(l *lobbyCommon) {
+	l.game.SetFinishHandler(func(g *game.Game, winner *game.Player) {
+		scores := make(map[string]int, len(g.Players))
+		for i := range g.Players {
+			p := &g.Players[i]
+			scores[p.Name] = p.VictoryPoints(g)
+		}
+		log.Info("game finished", "lobby", l.name, "id", l.id, "winner", winner.Name, "scores", scores)
+	})
+	l.game.SetSaveHandler(func(g *game.Game) (notice string, err error) {
+		defer func() {
+			if err != nil {
+				log.Error("game save failed", "lobby", l.name, "id", l.id, "error", err)
+			}
+		}()
 		if l.code == "" {
 			var b [8]byte
 			if _, err := rand.Read(b[:]); err != nil {
@@ -180,8 +204,9 @@ func (r *lobbyRegistry) Resume(code, username string) (*lobbyCommon, error) {
 	}
 	r.nextID++
 	l.id = r.nextID
-	r.configureSave(l)
+	r.configureGame(l)
 	r.lobbies[l.id] = l
+	log.Info("saved game loaded", "lobby", l.name, "id", l.id, "code", code, "player", username)
 	return l, nil
 }
 

@@ -49,13 +49,14 @@ type Game struct {
 	// stacks backing the other players' states
 	spectatorPhaseStacks map[int][]SpectatorPhase
 	// who is the turn holder
-	PlayerTurn  int
-	DevCardDeck []DevCard
-	ActionLog   []RichText
-	TradeOffers []TradeOffer
-	shouldQuit  bool
-	saveHandler func(*Game) (string, error)
-	saveNotice  string
+	PlayerTurn    int
+	DevCardDeck   []DevCard
+	ActionLog     []RichText
+	TradeOffers   []TradeOffer
+	shouldQuit    bool
+	saveHandler   func(*Game) (string, error)
+	saveNotice    string
+	finishHandler func(*Game, *Player)
 	// Player IDs of award holders; -1 means the award is unclaimed.
 	LongestRoadHolder int
 	LargestArmyHolder int
@@ -423,6 +424,7 @@ func (g *Game) applyTurnTransition(next Phase, mode EnterMode) {
 	if next == nil {
 		return
 	}
+	_, wasFinished := g.Phase().(*phaseGameEnd)
 	g.ensureTurnStack()
 	switch mode {
 	case EnterPush:
@@ -437,6 +439,9 @@ func (g *Game) applyTurnTransition(next Phase, mode EnterMode) {
 		g.phaseStack = []Phase{next}
 	default:
 		panic("unknown turn enter mode")
+	}
+	if ended, ok := g.Phase().(*phaseGameEnd); ok && !wasFinished && g.finishHandler != nil {
+		g.finishHandler(g, ended.winner)
 	}
 }
 
@@ -575,3 +580,7 @@ func (g *Game) SaveNotice() string {
 	defer g.m.RUnlock()
 	return g.saveNotice
 }
+
+// SetFinishHandler configures completion reporting before publishing the game.
+// The handler executes with the game locked and must not call locking Game methods.
+func (g *Game) SetFinishHandler(handler func(*Game, *Player)) { g.finishHandler = handler }

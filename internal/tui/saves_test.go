@@ -94,6 +94,7 @@ func TestRemoteSaveResume(t *testing.T) {
 }
 
 func TestSaveStorageLimitsAndExpiry(t *testing.T) {
+	output := captureLifecycleLogs(t)
 	s := &saveStore{dir: t.TempDir()}
 	var g game.Game
 	g.MakeBoard()
@@ -120,6 +121,10 @@ func TestSaveStorageLimitsAndExpiry(t *testing.T) {
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatal("expired save retained")
 	}
+	records := events(t, output, "save cleanup")
+	if len(records) != 1 || records[0]["expired"] != float64(1) || records[0]["bytes_reclaimed"] != float64(maxStoreBytes) {
+		t.Fatalf("missing cleanup totals: %s", output)
+	}
 	for _, code := range []string{"../secret", "", "GGGGGGGGGGGGGGGG"} {
 		if _, err := normalizeCode(code); err == nil {
 			t.Fatal("accepted invalid code")
@@ -128,6 +133,7 @@ func TestSaveStorageLimitsAndExpiry(t *testing.T) {
 }
 
 func TestFailedRemoteSaveKeepsGameOpen(t *testing.T) {
+	output := captureLifecycleLogs(t)
 	r := newLobbyRegistry()
 	// A regular file cannot be used as the save directory.
 	path := filepath.Join(t.TempDir(), "blocked")
@@ -155,5 +161,9 @@ func TestFailedRemoteSaveKeepsGameOpen(t *testing.T) {
 	l.game.ConfirmAction(nil)
 	if l.game.ShouldQuit() {
 		t.Fatal("game no longer playable")
+	}
+	records := events(t, output, "game save failed")
+	if len(records) != 1 || records[0]["level"] != "error" || records[0]["error"] == nil {
+		t.Fatalf("missing save error: %s", output)
 	}
 }
