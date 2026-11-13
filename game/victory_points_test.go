@@ -144,7 +144,7 @@ func TestCheckGameEndReturnsWinnerAt10Points(t *testing.T) {
 	}
 }
 
-func TestCheckGameEndReturnsFirstPlayerToReach10Points(t *testing.T) {
+func TestCheckGameEndWaitsForPlayersOwnTurn(t *testing.T) {
 	g := &Game{}
 	g.Start([]string{"A", "B", "C"})
 
@@ -153,12 +153,19 @@ func TestCheckGameEndReturnsFirstPlayerToReach10Points(t *testing.T) {
 		g.Players[1].HiddenDevCards = append(g.Players[1].HiddenDevCards, DevCardVictoryPoint)
 	}
 
+	if winner := g.CheckGameEnd(); winner != nil {
+		t.Fatal("player must wait until their own turn to win")
+	}
+	g.SetPhase(g.NextTurn())
 	winner := g.CheckGameEnd()
 	if winner == nil {
 		t.Fatal("expected winner with 10 points")
 	}
 	if winner != &g.Players[1] {
 		t.Fatal("expected second player to be the winner")
+	}
+	if _, ok := g.Phase().(*phaseGameEnd); !ok {
+		t.Fatalf("expected win at start of turn, got %T", g.Phase())
 	}
 }
 

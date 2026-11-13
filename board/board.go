@@ -147,20 +147,17 @@ func (b *Board) CanPlaceRoad(coord PathCoord, playerId int) bool {
 		return false
 	}
 
-	// Check if player has a settlement/city at one of the endpoints
-	if settlementPlayerId, ok := b.Settlements[coord.From]; ok && settlementPlayerId == playerId {
-		return true
-	}
-	if settlementPlayerId, ok := b.Settlements[coord.To]; ok && settlementPlayerId == playerId {
-		return true
-	}
-
-	// Check if player has a road connected to one of the endpoints
-	if b.HasRoadConnected(coord.From, playerId) {
-		return true
-	}
-	if b.HasRoadConnected(coord.To, playerId) {
-		return true
+	// An opponent's settlement blocks connecting through that endpoint.
+	for _, cross := range []CrossCoord{coord.From, coord.To} {
+		if owner, occupied := b.Settlements[cross]; occupied {
+			if owner == playerId {
+				return true
+			}
+			continue
+		}
+		if b.HasRoadConnected(cross, playerId) {
+			return true
+		}
 	}
 
 	return false

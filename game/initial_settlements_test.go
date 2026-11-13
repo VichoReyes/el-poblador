@@ -36,6 +36,9 @@ func TestInitialFlow(t *testing.T) {
 	resources := 0
 	for _, player := range game.Players {
 		resources += player.TotalResources()
+		if player.RoadsAvailable != 13 {
+			t.Errorf("expected 13 road pieces after setup, got %d", player.RoadsAvailable)
+		}
 	}
 	if resources == 0 {
 		t.Fatal("No resources found")
