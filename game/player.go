@@ -122,11 +122,6 @@ func (p *Player) PlayDevCard(card DevCard) bool {
 	return false
 }
 
-// TotalDevCards returns the total number of development cards the player has
-func (p *Player) TotalDevCards() int {
-	return len(p.HiddenDevCards) + len(p.PlayedDevCards)
-}
-
 func (p *Player) PlayedDevCardCount(card DevCard) int {
 	count := 0
 	for _, played := range p.PlayedDevCards {

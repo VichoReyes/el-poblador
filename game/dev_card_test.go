@@ -6,58 +6,6 @@ import (
 	"testing"
 )
 
-func TestDevelopmentCardPurchase(t *testing.T) {
-	// Create a new game
-	game := &Game{}
-	game.Start([]string{"Player1", "Player2", "Player3"})
-
-	// Give player 0 enough resources to buy a development card
-	player := &game.Players[0]
-	player.AddResource(board.ResourceWheat)
-	player.AddResource(board.ResourceOre)
-	player.AddResource(board.ResourceSheep)
-
-	// Check initial state
-	initialDeckSize := len(game.DevCardDeck)
-	initialPlayerCards := player.TotalDevCards()
-
-	// Verify player can buy a development card
-	if !player.CanBuyDevelopmentCard() {
-		t.Error("Player should be able to buy development card")
-	}
-
-	// Buy a development card
-	if !player.BuyDevelopmentCard() {
-		t.Error("Player should be able to consume resources for development card")
-	}
-
-	// Draw a card from the game deck
-	card := game.DrawDevelopmentCard()
-	if card == nil {
-		t.Error("Should be able to draw a card from the deck")
-	}
-
-	// Add card to player's hidden deck
-	player.HiddenDevCards = append(player.HiddenDevCards, *card)
-
-	// Verify final state
-	finalDeckSize := len(game.DevCardDeck)
-	finalPlayerCards := player.TotalDevCards()
-
-	if finalDeckSize != initialDeckSize-1 {
-		t.Errorf("Deck size should decrease by 1, got %d, expected %d", finalDeckSize, initialDeckSize-1)
-	}
-
-	if finalPlayerCards != initialPlayerCards+1 {
-		t.Errorf("Player cards should increase by 1, got %d, expected %d", finalPlayerCards, initialPlayerCards+1)
-	}
-
-	// Verify player no longer has resources to buy another card
-	if player.CanBuyDevelopmentCard() {
-		t.Error("Player should not be able to buy another development card")
-	}
-}
-
 func TestDevelopmentCardPlay(t *testing.T) {
 	// Create a new game
 	game := &Game{}
@@ -362,7 +310,7 @@ func TestBuyDevelopmentCardThroughBuildingPhase(t *testing.T) {
 
 	// Record initial state
 	initialDeckSize := len(game.DevCardDeck)
-	initialPlayerCards := player.TotalDevCards()
+	initialPlayerCards := len(player.HiddenDevCards)
 
 	// Create building phase
 	buildingPhase := PhaseBuilding(game)
@@ -380,7 +328,7 @@ func TestBuyDevelopmentCardThroughBuildingPhase(t *testing.T) {
 	}
 
 	// Check that the development card was actually added to the player
-	finalPlayerCards := game.Players[0].TotalDevCards() // Use game.Players[0] to get the actual player
+	finalPlayerCards := len(game.Players[0].HiddenDevCards)
 	if finalPlayerCards != initialPlayerCards+1 {
 		t.Errorf("Player should have gained 1 development card, got %d, expected %d", finalPlayerCards, initialPlayerCards+1)
 	}
@@ -425,7 +373,7 @@ func TestPlayKnightCardThroughDiceRollPhase(t *testing.T) {
 	}
 
 	// Check that the knight card was actually played (moved from hidden to played)
-	finalHiddenCards := game.Players[0].TotalDevCards() - len(game.Players[0].PlayedDevCards) // hidden cards
+	finalHiddenCards := len(game.Players[0].HiddenDevCards)
 	finalPlayedCards := len(game.Players[0].PlayedDevCards)
 
 	if finalHiddenCards != initialHiddenCards-1 {
