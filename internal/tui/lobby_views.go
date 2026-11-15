@@ -191,9 +191,13 @@ func (m *lobbyRef) View() string {
 	if m.lobby.resuming {
 		requirement = fmt.Sprintf("All %d original players must return and be ready.", len(m.lobby.seats))
 	}
+	twoPlayers := len(m.lobby.players) == 2
 	m.lobby.m.RUnlock()
-	lines = append(lines, "", requirement,
-		"Enter: toggle ready · Esc: leave · Ctrl+C: quit")
+	lines = append(lines, "", requirement)
+	if twoPlayers {
+		lines = append(lines, "Playing a game with only two players is possible, but it's not recommended")
+	}
+	lines = append(lines, "Enter: toggle ready · Esc: leave · Ctrl+C: quit")
 	info := strings.Join(lines, "\n")
 	r := m.gameConn.renderer
 	preview := m.lobby.game.PrintBoard(board.BoardView{UseEmoji: true, Renderer: r})
