@@ -295,8 +295,8 @@ func (g *Game) Start(playerNames []string) {
 }
 
 func (g *Game) StartOptions(playerNames []string, shufflePlayers, initBoard bool) {
-	if len(playerNames) < 3 || len(playerNames) > 4 {
-		panic("Game must have 3-4 players")
+	if len(playerNames) < 2 || len(playerNames) > 4 {
+		panic("Game must have 2-4 players")
 	}
 	if shufflePlayers {
 		rand.Shuffle(len(playerNames), func(i, j int) {

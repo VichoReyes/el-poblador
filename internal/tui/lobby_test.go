@@ -48,7 +48,7 @@ func assertStartedPlayers(t *testing.T, lobby *lobbyCommon, names ...string) {
 	}
 }
 
-func TestLobbyReadinessRequiresThreeOrFourReadyPlayers(t *testing.T) {
+func TestLobbyReadinessRequiresTwoToFourReadyPlayers(t *testing.T) {
 	for count := 1; count <= 4; count++ {
 		t.Run(fmt.Sprintf("%d_players", count), func(t *testing.T) {
 			registry := newLobbyRegistry()
@@ -56,12 +56,12 @@ func TestLobbyReadinessRequiresThreeOrFourReadyPlayers(t *testing.T) {
 			lobby := makeTestLobby(t, registry, "Ready", names...)
 			for i, name := range names {
 				lobby.toggleReady(name)
-				wantStarted := count >= 3 && i == count-1
+				wantStarted := count >= 2 && i == count-1
 				if got := registry.List()[0].started; got != wantStarted {
 					t.Fatalf("after %d ready players: started=%v, want %v", i+1, got, wantStarted)
 				}
 			}
-			if count >= 3 {
+			if count >= 2 {
 				assertStartedPlayers(t, lobby, names...)
 			}
 		})
@@ -110,14 +110,10 @@ func TestLobbyLeavingCreatorKeepsRemainingPlayers(t *testing.T) {
 	lobby.toggleReady("carol")
 	registry.Leave(lobby, "alice")
 	rows := registry.List()
-	if len(rows) != 1 || rows[0].players != 2 || rows[0].started {
+	if len(rows) != 1 || rows[0].players != 2 || !rows[0].started {
 		t.Fatalf("creator leaving produced invalid lobby state: %+v", rows)
 	}
-	if _, err := registry.Join(lobby.id, "dave"); err != nil {
-		t.Fatal(err)
-	}
-	lobby.toggleReady("dave")
-	assertStartedPlayers(t, lobby, "bob", "carol", "dave")
+	assertStartedPlayers(t, lobby, "bob", "carol")
 }
 
 func TestLobbyNameReuseDoesNotReviveStaleIDs(t *testing.T) {

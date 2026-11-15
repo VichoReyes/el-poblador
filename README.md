@@ -18,10 +18,10 @@ Another option is cloning the repo and building from [source](https://github.com
 
 The examples use `go run .`, but if you have a compiled binary use that instead.
 
-Run the main game with 3-4 players:
+Run the main game with 2-4 players:
 
 ```bash
-go run . new <player1> <player2> <player3> [player4]  # player names
+go run . new <player1> <player2> [player3] [player4]  # player names
 ```
 
 Load a saved game:

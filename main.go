@@ -39,12 +39,12 @@ func loadGameState(filename string) (*game.Game, error) {
 
 func printUsage() {
 	fmt.Println("Usage:")
-	fmt.Println("  el_poblador new [options] <player1> <player2> <player3> [player4]")
+	fmt.Println("  el_poblador new [options] <player1> <player2> [player3] [player4]")
 	fmt.Println("  el_poblador load <filename.gob>")
 	fmt.Println("  el_poblador serve")
 	fmt.Println()
 	fmt.Println("Commands:")
-	fmt.Println("  new    Start a new game with 3-4 players")
+	fmt.Println("  new    Start a new game with 2-4 players")
 	fmt.Println("  load   Load a saved game from file")
 	fmt.Println("  serve  Start an SSH server for multiplayer")
 	fmt.Println()
@@ -80,7 +80,7 @@ func main() {
 		boardDebug := newCmd.Bool("board-debug", false, "Debug mode for board coordinates")
 		noEmoji := newCmd.Bool("no-emoji", false, "Don't use emojis, they break board alignment on some terminals")
 		newCmd.Usage = func() {
-			fmt.Println("Usage: el_poblador new [options] <player1> <player2> <player3> [player4]")
+			fmt.Println("Usage: el_poblador new [options] <player1> <player2> [player3] [player4]")
 			fmt.Println()
 			fmt.Println("Options:")
 			newCmd.PrintDefaults()
@@ -88,8 +88,8 @@ func main() {
 		newCmd.Parse(args[1:])
 
 		playerNames := newCmd.Args()
-		if len(playerNames) < 3 || len(playerNames) > 4 {
-			fmt.Println("Error: 'new' command requires 3-4 player names")
+		if len(playerNames) < 2 || len(playerNames) > 4 {
+			fmt.Println("Error: 'new' command requires 2-4 player names")
 			fmt.Println()
 			newCmd.Usage()
 			os.Exit(1)

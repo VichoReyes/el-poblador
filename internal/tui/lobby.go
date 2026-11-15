@@ -165,7 +165,7 @@ func (l *lobbyCommon) startIfReady() []string {
 	if l.isStarted {
 		return nil
 	}
-	if len(l.players) < 3 {
+	if len(l.players) < 2 {
 		return nil
 	}
 	for _, player := range l.players {

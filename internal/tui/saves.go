@@ -195,7 +195,7 @@ func (r *lobbyRegistry) Resume(code, username string) (*lobbyCommon, error) {
 	for i, p := range l.game.Players {
 		l.seats[p.Name] = i
 	}
-	if len(l.seats) < 3 || len(l.seats) > 4 {
+	if len(l.seats) < 2 || len(l.seats) > 4 {
 		return nil, errors.New("invalid saved players")
 	}
 	l.game.SetPhase(game.PhaseDiceRoll(&l.game))
