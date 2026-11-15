@@ -70,6 +70,7 @@ func TestPlaceRobberReturnsAdjacentPlayerIds_Multiple(t *testing.T) {
 	// Place two adjacent settlements for different players (bypass distance rule for setup)
 	b.Settlements[adj[0]] = 0
 	b.Settlements[adj[1]] = 1
+	b.Settlements[adj[2]] = 1
 
 	ids := b.PlaceRobber(tile)
 	// Order is not guaranteed; verify set equality

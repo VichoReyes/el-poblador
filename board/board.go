@@ -30,7 +30,7 @@ func (b *Board) PlaceRobber(coord TileCoord) []int {
 	b.Robber = coord
 	playerIds := make([]int, 0)
 	for settlement, playerId := range b.Settlements {
-		if slices.Contains(settlement.adjacentTileCoords(), coord) {
+		if slices.Contains(settlement.adjacentTileCoords(), coord) && !slices.Contains(playerIds, playerId) {
 			playerIds = append(playerIds, playerId)
 		}
 	}

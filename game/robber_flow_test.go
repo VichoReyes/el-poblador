@@ -191,3 +191,26 @@ func TestRobberCannotBePlacedOnSameTile(t *testing.T) {
 		t.Fatalf("robber should not have moved from %v, but got %v", initialTile, currentPos)
 	}
 }
+
+func TestRobberExcludesTurnHolder(t *testing.T) {
+	g := &Game{}
+	g.Start([]string{"A", "B", "C"})
+	tile := board.TileCoord{X: 2, Y: 3}
+	g.Board.PlaceRobber(board.TileCoord{X: 2, Y: 5})
+	g.Board.Settlements = make(map[board.CrossCoord]int)
+	g.Players[g.PlayerTurn].AddResource(board.ResourceWheat)
+	for x := 0; x <= 5; x++ {
+		for y := 0; y <= 10; y++ {
+			cross, ok := board.NewCrossCoord(x, y)
+			if ok && isCrossAdjacentToTile(cross, tile) {
+				g.Board.Settlements[cross] = g.PlayerTurn
+			}
+		}
+	}
+	phase := PhasePlaceRobber(g, PhaseIdle(g)).(*phasePlaceRobber)
+	phase.tileCoord = tile
+	next, _ := phase.ConfirmTurn()
+	if _, ok := next.(*phaseIdle); !ok {
+		t.Fatalf("expected to skip stealing when only the turn holder is adjacent, got %T", next)
+	}
+}

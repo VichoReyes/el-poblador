@@ -53,6 +53,9 @@ func (p *phasePlaceRobber) ConfirmTurn() (Phase, EnterMode) {
 
 	var stealablePlayers []Player
 	for _, playerId := range playerIds {
+		if playerId == p.game.PlayerTurn {
+			continue
+		}
 		p := p.game.Players[playerId]
 		if p.TotalResources() > 0 {
 			stealablePlayers = append(stealablePlayers, p)
