@@ -6,7 +6,7 @@ A terminal-based implementation of Settlers of Catan in Go.
 
 ![game screenshot](screenshot.jpg)
 
-**TLDR:** To play online, run `ssh catan.vichoreyes.cl -p 2222`
+**TLDR:** To play online, run `ssh catan.vichoreyes.cl`
 
 ## Installation
 
@@ -44,7 +44,7 @@ go run . load <savefile>
 There's a hosted version, so you only need to connect to see players.
 
 ```bash
-$ ssh catan.vichoreyes.cl -p 2222  # to see open lobbies
+$ ssh catan.vichoreyes.cl  # to see open lobbies
 ```
 
 It's on GCP, as documented on
@@ -52,7 +52,7 @@ It's on GCP, as documented on
 
 You can save and resume an online game. Resuming is done like so:
 ```bash
-ssh -t -p 2222 yourname@catan.vichoreyes.cl resume YOUR_SAVE_CODE
+ssh -t yourname@catan.vichoreyes.cl resume YOUR_SAVE_CODE
 ```
 
 Note: saved games are deleted after 30 days to save space.

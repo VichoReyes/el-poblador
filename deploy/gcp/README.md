@@ -5,16 +5,17 @@ zone `us-west1-b` (Oregon), with a 10 GB standard persistent boot disk. Its
 reserved Standard Tier IPv4 address is `35.212.215.46` (`el-poblador-ip`).
 
 The custom VPC `el-poblador` contains subnet `el-poblador-oregon`
-(`10.43.0.0/24`). Firewall rule `el-poblador-game` allows public TCP port 2222;
-`el-poblador-admin-iap` allows TCP port 22 only from the IAP range
+(`10.43.0.0/24`). Firewall rule `el-poblador-game` allows public TCP port 22;
+`el-poblador-admin-iap` allows TCP port 2200 only from the IAP range
 `35.235.240.0/20`. Both target VMs tagged `el-poblador`. The VM has no service
-account. The game runs as an unprivileged system user under systemd and starts
-automatically at boot.
+account. The game runs as an unprivileged system user under systemd, with permission to
+bind port 22, and starts automatically at boot. Administrative sshd listens on
+port 2200.
 
 Connect with:
 
 ```sh
-ssh -p 2222 yourname@catan.vichoreyes.cl
+ssh yourname@catan.vichoreyes.cl
 ```
 
 ## Costs
@@ -29,7 +30,7 @@ The deployment is not entirely free: the public IPv4 address costs
 [$0.005/hour](https://cloud.google.com/vpc/network-pricing#ipaddress)
 (about US$3.65 for 730 hours). Network traffic beyond the applicable free
 allowances is also billed. The DNS record is DNS-only because players connect
-directly over SSH on port 2222.
+directly over SSH on port 22.
 
 ## Administration
 
@@ -38,7 +39,7 @@ Compute Engine and IAP permissions in the project.
 
 ```sh
 gcloud compute ssh el-poblador --project=el-poblador \
-  --zone=us-west1-b --tunnel-through-iap
+  --zone=us-west1-b --tunnel-through-iap --ssh-flag="-p 2200"
 ```
 
 On the VM:
@@ -64,10 +65,10 @@ go test ./...
 payload_dir=$(mktemp -d)
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o "$payload_dir/el-poblador" .
 cp deploy/gcp/el-poblador.service deploy/gcp/install.sh "$payload_dir/"
-gcloud compute scp --recurse "$payload_dir" el-poblador:~/el-poblador-update \
+gcloud compute scp --scp-flag="-P 2200" --recurse "$payload_dir" el-poblador:~/el-poblador-update \
   --project=el-poblador --zone=us-west1-b --tunnel-through-iap
 gcloud compute ssh el-poblador --project=el-poblador \
-  --zone=us-west1-b --tunnel-through-iap \
+  --zone=us-west1-b --tunnel-through-iap --ssh-flag="-p 2200" \
   --command='sudo sh ~/el-poblador-update/install.sh ~/el-poblador-update && rm -rf ~/el-poblador-update'
 rm -r "$payload_dir"
 ```
